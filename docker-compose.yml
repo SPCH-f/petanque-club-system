@@ -1,0 +1,99 @@
+version: '3.9'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: petanque_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-petanque_db}
+      MYSQL_USER: ${MYSQL_USER:-petanque_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-petanque_pass}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - petanque_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: petanque_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - petanque_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      timeout: 5s
+      retries: 5
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: petanque_phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: petanque_user
+      PMA_PASSWORD: petanque_pass
+    ports:
+      - "8080:80"
+    depends_on:
+      - mysql
+    networks:
+      - petanque_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: petanque_backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      - DB_HOST=mysql
+      - REDIS_HOST=redis
+      - NODE_ENV=production
+    ports:
+      - "5000:5000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - petanque_network
+    volumes:
+      - ./backend/uploads:/app/uploads
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: petanque_frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - petanque_network
+
+volumes:
+  mysql_data:
+  redis_data:
+
+networks:
+  petanque_network:
+    driver: bridge

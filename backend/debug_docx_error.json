@@ -1,0 +1,23 @@
+{
+  "name": "TemplateError",
+  "message": "Multi error",
+  "stack": "Error: Multi error\n    at new XTTemplateError (C:\\Project\\System_petanque\\backend\\node_modules\\docxtemplater\\js\\errors.js:21:16)\n    at throwMultiError (C:\\Project\\System_petanque\\backend\\node_modules\\docxtemplater\\js\\errors.js:117:13)\n    at verifyErrors (C:\\Project\\System_petanque\\backend\\node_modules\\docxtemplater\\js\\docxtemplater.js:212:5)\n    at Docxtemplater.compile (C:\\Project\\System_petanque\\backend\\node_modules\\docxtemplater\\js\\docxtemplater.js:543:7)\n    at new Docxtemplater (C:\\Project\\System_petanque\\backend\\node_modules\\docxtemplater\\js\\docxtemplater.js:252:12)\n    at DocumentService.generateDocx (C:\\Project\\System_petanque\\backend\\src\\services\\documentService.js:122:19)\n    at async generateDocument (C:\\Project\\System_petanque\\backend\\src\\controllers\\document.controller.js:187:24)",
+  "properties": {
+    "errors": [
+      {
+        "name": "TemplateError",
+        "message": "Unclosed loop",
+        "stack": "Error: Unclosed loop\n    at new XTTemplateError (C:\\Project\\System_petanque\\backend\\node_modules\\docxtemplater\\js\\errors.js:21:16)\n    at getUnmatchedLoopException (C:\\Project\\System_petanque\\backend\\node_modules\\docxtemplater\\js\\errors.js:402:13)\n    at transformer (C:\\Project\\System_petanque\\backend\\node_modules\\docxtemplater\\js\\modules\\expand-pair-trait.js:94:17)\n    at getPairs (C:\\Project\\System_petanque\\backend\\node_modules\\docxtemplater\\js\\modules\\expand-pair-trait.js:108:18)\n    at ExpandPairTrait.postparse (C:\\Project\\System_petanque\\backend\\node_modules\\docxtemplater\\js\\modules\\expand-pair-trait.js:168:23)\n    at _postparse (C:\\Project\\System_petanque\\backend\\node_modules\\docxtemplater\\js\\parser.js:187:40)\n    at Object.postparse (C:\\Project\\System_petanque\\backend\\node_modules\\docxtemplater\\js\\parser.js:206:19)\n    at XmlTemplater.postparse (C:\\Project\\System_petanque\\backend\\node_modules\\docxtemplater\\js\\xml-templater.js:172:38)\n    at Docxtemplater.compile (C:\\Project\\System_petanque\\backend\\node_modules\\docxtemplater\\js\\docxtemplater.js:536:37)\n    at new Docxtemplater (C:\\Project\\System_petanque\\backend\\node_modules\\docxtemplater\\js\\docxtemplater.js:252:12)",
+        "properties": {
+          "id": "unclosed_loop",
+          "explanation": "The loop with tag \"\" is unclosed",
+          "xtag": "",
+          "offset": 820,
+          "file": "word/document.xml"
+        }
+      }
+    ],
+    "id": "multi_error",
+    "explanation": "The template has multiple errors"
+  }
+}
