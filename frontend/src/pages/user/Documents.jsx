@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import {
   FileText, Download, Loader2, Search,
   ChevronRight, ArrowLeft, Send, AlertCircle, Eye,
-  Plus, Trash2, Clock, CheckCircle, XCircle
+  Plus, Trash2, Clock, CheckCircle, XCircle, RotateCcw
 } from 'lucide-react';
 
 const TableInput = ({ name, register, errors, columnDef }) => {
@@ -115,6 +115,9 @@ const Documents = () => {
   const [activeTab, setActiveTab] = useState('create'); // 'create' or 'requests'
   const [viewingRequest, setViewingRequest] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
+  const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
+  const [returningRequest, setReturningRequest] = useState(null);
+  const [returnPosition, setReturnPosition] = useState('');
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm();
 
@@ -135,6 +138,22 @@ const Documents = () => {
       return res.data.data;
     },
     enabled: activeTab === 'requests'
+  });
+
+  // Return Request Mutation
+  const returnMutation = useMutation({
+    mutationFn: async ({ id, position }) => {
+      return api.post(`/documents/requests/${id}/return`, { position });
+    },
+    onSuccess: () => {
+      toast.success('แจ้งคืนพัสดุเรียบร้อยแล้ว รอการตรวจสอบ');
+      setIsReturnModalOpen(false);
+      setReturningRequest(null);
+      refetchRequests();
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || 'เกิดข้อผิดพลาดในการแจ้งคืน');
+    }
   });
 
   // Generate/Request Mutation
@@ -255,6 +274,16 @@ const Documents = () => {
                         <input type="checkbox" {...register(field.name)} className="w-6 h-6 rounded text-indigo-600" />
                         <span className="font-bold text-slate-600">เลือกรายการนี้</span>
                       </div>
+                    ) : field.type === 'select' ? (
+                      <select 
+                        {...register(field.name)} 
+                        className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-indigo-400 transition-all text-sm font-bold"
+                      >
+                        <option value="">-- เลือกรายการ --</option>
+                        {field.options?.split(',').map((opt, i) => (
+                          <option key={i} value={opt.trim()}>{opt.trim()}</option>
+                        ))}
+                      </select>
                     ) : (
                       <input type={field.type} {...register(field.name)} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:border-indigo-400 transition-all" />
                     )}
@@ -368,15 +397,33 @@ const Documents = () => {
             myRequests.map(req => (
               <div key={req.id} className="bg-white p-4 sm:p-6 rounded-[2rem] sm:rounded-[2.5rem] border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm hover:shadow-md transition-all">
                 <div className="flex items-center gap-4 sm:gap-5">
-                  <div className={`p-3 sm:p-4 rounded-2xl ${req.status === 'approved' ? 'bg-emerald-50 text-emerald-600' : req.status === 'rejected' ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600'}`}>
+                  <div className={`p-3 sm:p-4 rounded-2xl ${
+                    req.status === 'borrowed' || req.status === 'approved' ? 'bg-emerald-50 text-emerald-600' : 
+                    req.status === 'rejected' ? 'bg-red-50 text-red-600' : 
+                    req.status === 'returning' ? 'bg-indigo-50 text-indigo-600' :
+                    req.status === 'completed' ? 'bg-slate-50 text-slate-600' :
+                    'bg-amber-50 text-amber-600'
+                  }`}>
                     <FileText size={20} className="sm:w-6 sm:h-6" />
                   </div>
                   <div>
                     <h3 className="text-base sm:text-lg font-black text-slate-800 leading-tight">{req.template_name}</h3>
                     <div className="flex flex-wrap items-center gap-2 mt-1">
                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{new Date(req.created_at).toLocaleDateString('th-TH')}</span>
-                      <span className={`px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] font-black uppercase ${req.status === 'approved' ? 'bg-emerald-100 text-emerald-600' : req.status === 'rejected' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'}`}>
-                        {req.status === 'approved' ? 'อนุมัติแล้ว' : req.status === 'rejected' ? 'ปฏิเสธ' : 'รอแอดมินเซ็น'}
+                      <span className={`px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] font-black uppercase ${
+                        req.status === 'borrowed' || req.status === 'approved' ? 'bg-emerald-100 text-emerald-600' : 
+                        req.status === 'rejected' ? 'bg-red-100 text-red-600' : 
+                        req.status === 'returning' ? 'bg-indigo-100 text-indigo-600' :
+                        req.status === 'completed' ? 'bg-slate-100 text-slate-600' :
+                        'bg-amber-100 text-amber-600'
+                      }`}>
+                        {
+                          req.status === 'borrowed' || req.status === 'approved' ? 'อนุมัติแล้ว (ยืม)' : 
+                          req.status === 'rejected' ? 'ปฏิเสธคำร้อง' : 
+                          req.status === 'returning' ? 'รอแอดมินอนุมัติการคืน' : 
+                          req.status === 'completed' ? 'คืนเสร็จสมบูรณ์' :
+                          'รอแอดมินอนุมัติการยืม'
+                        }
                       </span>
                     </div>
                   </div>
@@ -388,12 +435,32 @@ const Documents = () => {
                   >
                     <Eye size={20} className="mx-auto" />
                   </button>
-                  {req.status === 'approved' && (
+                  {(req.status === 'approved' || req.status === 'borrowed') && (
+                    <>
+                      <button
+                        onClick={() => handleDownload(req.id, req.template_name)}
+                        className="flex-1 sm:flex-none px-4 py-3 bg-emerald-600 text-white rounded-2xl text-[10px] font-black flex items-center justify-center gap-2 shadow-lg shadow-emerald-100"
+                      >
+                        <Download size={14} /> โหลดใบยืม
+                      </button>
+                      <button
+                        onClick={() => {
+                          setReturningRequest(req);
+                          setReturnPosition(req.data?.position || '');
+                          setIsReturnModalOpen(true);
+                        }}
+                        className="flex-1 sm:flex-none px-4 py-3 bg-indigo-600 text-white rounded-2xl text-[10px] font-black flex items-center justify-center gap-2 shadow-lg shadow-indigo-100"
+                      >
+                        <RotateCcw size={14} /> ส่งคืนพัสดุ
+                      </button>
+                    </>
+                  )}
+                  {req.status === 'completed' && (
                     <button
                       onClick={() => handleDownload(req.id, req.template_name)}
-                      className="flex-[2] sm:flex-none px-4 sm:px-6 py-3 bg-emerald-600 text-white rounded-2xl text-xs font-black flex items-center justify-center gap-2 shadow-lg shadow-emerald-100"
+                      className="flex-1 sm:flex-none px-4 py-3 bg-emerald-600 text-white rounded-2xl text-[10px] font-black flex items-center justify-center gap-2 shadow-lg shadow-emerald-100"
                     >
-                      <Download size={16} /> โหลดไฟล์
+                      <Download size={14} /> โหลดใบเสร็จคืน
                     </button>
                   )}
                 </div>
@@ -425,43 +492,63 @@ const Documents = () => {
 
             <div className="flex-1 overflow-y-auto p-8 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {Object.entries(viewingRequest.data || {}).map(([key, value]) => (
-                  <div key={key} className={`p-5 bg-slate-50 rounded-[2rem] border border-slate-100 ${Array.isArray(value) ? 'md:col-span-2' : ''}`}>
-                    <div className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-2 px-1">{key}</div>
-                    <div className="font-bold text-slate-700">
-                      {Array.isArray(value) ? (
-                        <div className="mt-2 overflow-x-auto">
-                          <table className="w-full text-left text-[10px] border-collapse">
-                            <thead>
-                              <tr className="border-b border-slate-200 text-slate-400 uppercase tracking-tighter">
-                                {value.length > 0 && Object.keys(value[0]).filter(k => k !== 'id' && k !== 'no' && k !== '#').map(k => (
-                                  <th key={k} className="py-2 pr-2">{k}</th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {value.map((item, idx) => (
-                                <tr key={idx} className="border-b border-slate-100 last:border-0">
-                                  {Object.entries(item).filter(([k]) => k !== 'id' && k !== 'no' && k !== '#').map(([k, v], i) => (
-                                    <td key={i} className="py-2 pr-2">
-                                      {typeof v === 'object' ? JSON.stringify(v) : String(v)}
-                                    </td>
-                                  ))}
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                {(() => {
+                  let fields = [];
+                  try {
+                    const fieldsSource = viewingRequest.template_fields;
+                    fields = typeof fieldsSource === 'string' ? JSON.parse(fieldsSource) : (fieldsSource || []);
+                  } catch (e) {}
+
+                  const autoTags = ['bd','bm','by','d','m','y','rd','rm','ry','buser','ruser','bad1','bad2','bad3','bad4','rad1','rad2','rad3','rad4','n-user','rn-user','full_name','prefix_display','p-user','rposition','rp-user'];
+
+                  return fields
+                    .filter(f => f.type !== 'heading' && !autoTags.includes(f.name))
+                    .map((field) => {
+                      const key = field.name;
+                      const value = viewingRequest.data?.[key];
+                      const label = field.label || key;
+
+                      if (value === undefined || value === null || value === "") return null;
+
+                      return (
+                        <div key={key} className={`p-5 bg-slate-50 rounded-[2rem] border border-slate-100 ${Array.isArray(value) ? 'md:col-span-2' : ''}`}>
+                          <div className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-2 px-1">{label}</div>
+                          <div className="font-bold text-slate-700">
+                            {Array.isArray(value) ? (
+                              <div className="mt-2 overflow-x-auto">
+                                <table className="w-full text-left text-[10px] border-collapse">
+                                  <thead>
+                                    <tr className="border-b border-slate-200 text-slate-400 uppercase tracking-tighter">
+                                      <th className="py-2 pr-2">#</th>
+                                      <th className="py-2 pr-2">รายการ</th>
+                                      <th className="py-2 pr-2 text-center">จำนวน</th>
+                                      <th className="py-2">รหัส</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {value.map((item, idx) => (
+                                      <tr key={idx} className="border-b border-slate-100 last:border-0">
+                                        <td className="py-2 pr-2 text-slate-400">{idx + 1}</td>
+                                        <td className="py-2 pr-2">{item.name || item[Object.keys(item)[0]]}</td>
+                                        <td className="py-2 pr-2 text-center font-black">{item.amount || item[Object.keys(item)[1]]}</td>
+                                        <td className="py-2 text-slate-500">{item.code || item[Object.keys(item)[2]] || '-'}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            ) : typeof value === 'boolean' ? (
+                              <span className={`px-3 py-1 rounded-full text-[10px] ${value ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-500'}`}>
+                                {value ? 'เลือกแล้ว' : 'ไม่ได้เลือก'}
+                              </span>
+                            ) : (
+                              <span className="text-sm">{String(value || '-')}</span>
+                            )}
+                          </div>
                         </div>
-                      ) : typeof value === 'boolean' ? (
-                        <span className={`px-3 py-1 rounded-full text-[10px] ${value ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200 text-slate-500'}`}>
-                          {value ? 'เลือกแล้ว' : 'ไม่ได้เลือก'}
-                        </span>
-                      ) : (
-                        <span className="text-sm">{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                      );
+                    });
+                })()}
               </div>
             </div>
 
@@ -514,6 +601,61 @@ const Documents = () => {
                 className="px-10 py-4 bg-slate-800 text-white rounded-2xl font-black shadow-lg transition-all active:scale-95"
               >
                 ปิดหน้าต่างตัวอย่าง
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Return Modal */}
+      {isReturnModalOpen && returningRequest && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in zoom-in duration-300">
+          <div className="bg-white rounded-[3rem] w-full max-w-md shadow-2xl overflow-hidden border border-white/20">
+            <div className="p-8 border-b bg-indigo-50/50">
+              <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-[1.5rem] flex items-center justify-center mb-6">
+                <RotateCcw size={32} />
+              </div>
+              <h3 className="text-2xl font-black text-slate-800">แจ้งคืนพัสดุ</h3>
+              <p className="text-slate-500 font-medium mt-2">กรุณายืนยันตำแหน่งปัจจุบันของคุณเพื่อทำการส่งคืน</p>
+            </div>
+            
+            <div className="p-8 space-y-6">
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block px-1">ตำแหน่งของคุณ (เช่น นักศึกษา, ประธานโครงการ)</label>
+                <input
+                  type="text"
+                  value={returnPosition}
+                  onChange={(e) => setReturnPosition(e.target.value)}
+                  placeholder="กรอกตำแหน่ง..."
+                  className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-700"
+                />
+              </div>
+
+              <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 flex gap-3">
+                <AlertCircle size={20} className="text-amber-500 shrink-0" />
+                <p className="text-[10px] text-amber-700 font-bold leading-relaxed">
+                  เมื่อกดปุ่มยืนยัน ระบบจะใช้ลายเซ็นดิจิทัลของคุณจากโปรไฟล์ในการประทับตราคืนของโดยอัตโนมัติ
+                </p>
+              </div>
+            </div>
+
+            <div className="p-8 bg-slate-50 border-t flex gap-4">
+              <button
+                onClick={() => {
+                  setIsReturnModalOpen(false);
+                  setReturningRequest(null);
+                }}
+                className="flex-1 py-4 bg-white text-slate-500 rounded-2xl font-black border border-slate-200 hover:bg-slate-100 transition-all"
+              >
+                ยกเลิก
+              </button>
+              <button
+                onClick={() => returnMutation.mutate({ id: returningRequest.id, position: returnPosition })}
+                disabled={returnMutation.isPending}
+                className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-xl shadow-indigo-100 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+              >
+                {returnMutation.isPending ? <Loader2 className="animate-spin" /> : <CheckCircle size={20} />}
+                ยืนยันการคืน
               </button>
             </div>
           </div>

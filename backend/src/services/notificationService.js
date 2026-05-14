@@ -175,6 +175,28 @@ const notifyDocumentRejected = (userId, templateName) =>
     link:    '/history',
   });
 
+const notifyReturnRequested = async (requestId) => {
+  try {
+    const [[info]] = await db.query(
+      'SELECT u.first_name, u.last_name, t.name as template_name FROM generated_documents gd JOIN users u ON gd.user_id = u.id JOIN document_templates t ON gd.template_id = t.id WHERE gd.id = ?',
+      [requestId]
+    );
+    if (!info) return;
+
+    const [admins] = await db.query("SELECT id FROM users WHERE role = 'admin' AND deleted_at IS NULL");
+    const notifications = admins.map(admin => createNotification({
+      userId: admin.id,
+      type: 'admin_return_request',
+      title: '📦 มีการแจ้งคืนพัสดุใหม่',
+      message: `ผู้ใช้ ${info.first_name} ${info.last_name} แจ้งคืนพัสดุสำหรับ "${info.template_name}" รอการตรวจสอบ`,
+      link: '/admin/approvals'
+    }));
+    await Promise.all(notifications);
+  } catch (err) {
+    console.error('Notify return request error:', err.message);
+  }
+};
+
 module.exports = {
   createNotification,
   notifyBookingSuccess,
@@ -190,5 +212,6 @@ module.exports = {
   notifyAdminsOfComment,
   notifyAdminsOfDocumentRequest,
   notifyDocumentApproved,
-  notifyDocumentRejected
+  notifyDocumentRejected,
+  notifyReturnRequested
 };

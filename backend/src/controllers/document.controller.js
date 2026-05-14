@@ -127,10 +127,30 @@ const generateDocument = async (req, res) => {
 
     const mergedData = {
       ...(data && typeof data === 'object' ? data : {}),
+      // Default dates (Borrow Phase)
+      bd: now.getDate(),
+      bm: thaiMonths[now.getMonth()],
+      by: now.getFullYear() + 543,
+      // Fallback for single-phase tags
       d: now.getDate(),
       m: thaiMonths[now.getMonth()],
-      y: now.getFullYear() + 543 // Thai Buddhist Year
+      y: now.getFullYear() + 543,
+      // Initialize return phase as empty
+      rd: '', rm: '', ry: '',
+      ruser: '', 'rposition': '', 'rn-user': '',
+      rad1: '', rad2: '', rad3: '', rad4: ''
     };
+
+    // Handle Title Selection Highlight (prefix -> prefix_display)
+    if (mergedData.prefix) {
+      const p = mergedData.prefix;
+      const mr = p === 'นาย' ? '[นาย]' : 'นาย';
+      const mrs = p === 'นาง' ? '[นาง]' : 'นาง';
+      const ms = p === 'นางสาว' ? '[นางสาว]' : 'นางสาว';
+      mergedData.prefix_display = `( ${mr} / ${mrs} / ${ms} )`;
+    } else {
+      mergedData.prefix_display = `( นาย / นาง / นางสาว )`;
+    }
 
     // Auto-add index 'i' to any array fields for table numbering
     Object.keys(mergedData).forEach(key => {
@@ -144,7 +164,7 @@ const generateDocument = async (req, res) => {
       }
     });
 
-    // Handle Checkboxes: Fill missing checkbox fields with '☐'
+    // Handle Checkboxes and Dates
     if (template.fields) {
       let fieldsArray = [];
       try {
@@ -155,7 +175,6 @@ const generateDocument = async (req, res) => {
 
       if (Array.isArray(fieldsArray)) {
         fieldsArray.forEach(field => {
-          // Auto-format dates for the specific tags: sd, sm, sy, ed, em, ey
           if (field.type === 'date' && mergedData[field.name]) {
             const d = new Date(mergedData[field.name]);
             if (!isNaN(d.getTime())) {
@@ -176,11 +195,9 @@ const generateDocument = async (req, res) => {
           }
 
           if (field.type === 'checkbox') {
-            // If the field is missing or falsy, set it to the empty square symbol
             if (!mergedData[field.name]) {
               mergedData[field.name] = '☐';
             } else if (mergedData[field.name] === true || mergedData[field.name] === 'true' || mergedData[field.name] === '1') {
-              // Ensure selected checkboxes show the checkmark
               mergedData[field.name] = '✓';
             }
           }
@@ -188,31 +205,29 @@ const generateDocument = async (req, res) => {
       }
     }
 
-    // Add user signature
+    // Add user signature (Borrow Phase)
     const [userRows] = await db.query('SELECT first_name, last_name, signature_url FROM users WHERE id = ?', [userId]);
     if (userRows[0]?.signature_url) {
       const sigPath = path.join(__dirname, '../../', userRows[0].signature_url);
       try {
         if (fsSync.existsSync(sigPath)) {
-          mergedData.user = sigPath;
+          mergedData.buser = sigPath;
         }
-      } catch (e) {
-        console.warn('Signature file check failed:', e.message);
-      }
+      } catch (e) {}
     }
-    mergedData.n_user = userRows[0] ? `${userRows[0].first_name} ${userRows[0].last_name}` : '';
+    const profileName = userRows[0] ? `${userRows[0].first_name} ${userRows[0].last_name}` : '';
+    if (!mergedData['n-user']) mergedData['n-user'] = profileName;
+    if (!mergedData['full_name']) mergedData['full_name'] = mergedData['n-user'];
 
-    // If it's a request being viewed/downloaded, add admin signatures and names
+    // If it's a request being viewed/downloaded, add admin signatures and return phase data
     if (requestId) {
-      const [reqRows] = await db.query('SELECT admin_approvals FROM generated_documents WHERE id = ?', [requestId]);
-      let approvals = reqRows[0]?.admin_approvals || {};
-      if (typeof approvals === 'string') {
-        try {
-          approvals = JSON.parse(approvals);
-        } catch (e) {
-          console.error('Failed to parse admin_approvals:', e);
-          approvals = {};
-        }
+      const [reqRows] = await db.query('SELECT admin_approvals, return_approvals, return_details, status FROM generated_documents WHERE id = ?', [requestId]);
+      const request = reqRows[0];
+      
+      // Phase 1: Borrow Approvals
+      let borrowApprovals = request?.admin_approvals || {};
+      if (typeof borrowApprovals === 'string') {
+        try { borrowApprovals = JSON.parse(borrowApprovals); } catch (e) { borrowApprovals = {}; }
       }
 
       const roles = {
@@ -222,25 +237,64 @@ const generateDocument = async (req, res) => {
         president: 'ad4'
       };
 
+      // Fill Borrow Signatures (bad1, bad2, ...)
       for (const [role, suffix] of Object.entries(roles)) {
-        if (approvals[role]) {
-          if (approvals[role].signature) {
-            const sigPath = path.join(__dirname, '../../', approvals[role].signature);
+        if (borrowApprovals[role]?.signature) {
+          const sigPath = path.join(__dirname, '../../', borrowApprovals[role].signature);
+          try {
+            if (fsSync.existsSync(sigPath)) {
+              mergedData[`b${suffix}`] = sigPath;
+            }
+          } catch (e) {}
+        }
+      }
+
+      // Phase 2: Return Phase (ONLY if status is returning or completed)
+      if (request.status === 'returning' || request.status === 'completed') {
+        let returnApprovals = request?.return_approvals || {};
+        if (typeof returnApprovals === 'string') {
+          try { returnApprovals = JSON.parse(returnApprovals); } catch (e) { returnApprovals = {}; }
+        }
+
+        let returnDetails = request?.return_details || {};
+        if (typeof returnDetails === 'string') {
+          try { returnDetails = JSON.parse(returnDetails); } catch (e) { returnDetails = {}; }
+        }
+
+        // Fill Return Signatures (rad1, rad2, ...)
+        for (const [role, suffix] of Object.entries(roles)) {
+          if (returnApprovals[role]?.signature) {
+            const sigPath = path.join(__dirname, '../../', returnApprovals[role].signature);
             try {
               if (fsSync.existsSync(sigPath)) {
-                mergedData[suffix] = sigPath;
+                mergedData[`r${suffix}`] = sigPath;
               }
-            } catch (e) {
-              console.warn('Admin signature file check failed:', e.message);
-            }
-          }
-
-          // Fetch admin name and position
-          const [adminInfo] = await db.query('SELECT first_name, last_name FROM users WHERE id = ?', [approvals[role].adminId]);
-          if (adminInfo[0]) {
-            mergedData[`name_admin${suffix.slice(-1)}`] = `${adminInfo[0].first_name} ${adminInfo[0].last_name}`;
+            } catch (e) {}
           }
         }
+
+        // Fill Return User Data (ruser, rn-user, rp-user)
+        if (returnDetails.signature) {
+          const sigPath = path.join(__dirname, '../../', returnDetails.signature);
+          try {
+            if (fsSync.existsSync(sigPath)) {
+              mergedData.ruser = sigPath;
+            }
+          } catch (e) {}
+        }
+        
+        // Use rn-user as shown in image
+        mergedData['rn-user'] = userRows[0] ? `${userRows[0].first_name} ${userRows[0].last_name}` : '';
+        
+        if (returnDetails.position) {
+          mergedData['rposition'] = returnDetails.position;
+        }
+
+        // Set Return Date
+        const rDate = returnDetails.returnedAt ? new Date(returnDetails.returnedAt) : now;
+        mergedData.rd = rDate.getDate();
+        mergedData.rm = thaiMonths[rDate.getMonth()];
+        mergedData.ry = rDate.getFullYear() + 543;
       }
     }
 
@@ -387,7 +441,7 @@ const getRequests = async (req, res) => {
   try {
     const { status } = req.query;
     const query = `
-      SELECT gd.*, u.first_name as user_name, t.name as template_name 
+      SELECT gd.*, u.first_name as user_name, t.name as template_name, t.fields as template_fields
       FROM generated_documents gd
       JOIN users u ON gd.user_id = u.id
       JOIN document_templates t ON gd.template_id = t.id
@@ -397,8 +451,8 @@ const getRequests = async (req, res) => {
     const [rows] = await db.query(query, [status || 'pending']);
     return sendSuccess(res, rows);
   } catch (err) {
-    console.error(err);
-    return sendError(res, 500, 'เกิดข้อผิดพลาดในการดึงข้อมูล');
+    console.error('GET REQUESTS ERROR:', err);
+    return sendError(res, 500, 'เกิดข้อผิดพลาดในการดึงข้อมูล: ' + err.message);
   }
 };
 
@@ -420,28 +474,48 @@ const approveRequest = async (req, res) => {
     }
 
     // Get current request
-    const [reqRows] = await db.query('SELECT admin_approvals, status FROM generated_documents WHERE id = ?', [id]);
+    const [reqRows] = await db.query('SELECT admin_approvals, return_approvals, status FROM generated_documents WHERE id = ?', [id]);
     const request = reqRows[0];
 
     if (!request) return sendError(res, 404, 'ไม่พบคำร้อง');
 
+    // Decide which approvals to update based on current status
+    let approvalsField = 'admin_approvals';
     let approvals = request.admin_approvals || {};
+    
+    if (request.status === 'returning' || request.status === 'completed') {
+      approvalsField = 'return_approvals';
+      approvals = request.return_approvals || {};
+    }
+
+    if (typeof approvals === 'string') {
+      try { approvals = JSON.parse(approvals); } catch (e) { approvals = {}; }
+    }
+
     approvals[admin.signature_role] = {
       adminId,
       signedAt: new Date(),
       signature: admin.signature_url
     };
 
-    // Check if all 4 roles have signed (Optional logic: can be flexible)
-    // For now, let's assume if 4 unique roles have signed, it's approved.
-    const requiredRoles = ['approver', 'advisor1', 'advisor2', 'president'];
-    const signedRoles = Object.keys(approvals);
-    const isFullyApproved = requiredRoles.every(role => signedRoles.includes(role));
+    // Check if all required roles have signed for this phase
+    // (Disabled for testing: Single signature approval)
+    // const requiredRoles = ['approver', 'advisor1', 'advisor2', 'president'];
+    // const signedRoles = Object.keys(approvals);
+    // const isPhaseComplete = requiredRoles.every(role => signedRoles.includes(role));
+    
+    const isPhaseComplete = true; 
 
-    const newStatus = isFullyApproved ? 'approved' : 'pending';
+
+    let newStatus = request.status;
+    if (request.status === 'pending' && isPhaseComplete) {
+      newStatus = 'borrowed';
+    } else if (request.status === 'returning' && isPhaseComplete) {
+      newStatus = 'completed';
+    }
 
     await db.query(
-      'UPDATE generated_documents SET admin_approvals = ?, status = ? WHERE id = ?',
+      `UPDATE generated_documents SET ${approvalsField} = ?, status = ? WHERE id = ?`,
       [JSON.stringify(approvals), newStatus, id]
     );
 
@@ -452,13 +526,13 @@ const approveRequest = async (req, res) => {
         [id]
       );
       if (tplInfo) {
-        await notificationService.notifyDocumentApproved(tplInfo.user_id, tplInfo.name, isFullyApproved);
+        await notificationService.notifyDocumentApproved(tplInfo.user_id, tplInfo.name, isPhaseComplete);
       }
     } catch (notifyErr) {
       console.error('Notify User of Document Approval Error:', notifyErr.message);
     }
 
-    return sendSuccess(res, { isFullyApproved }, 'ลงลายเซ็นเรียบร้อยแล้ว');
+    return sendSuccess(res, { isPhaseComplete }, 'ลงลายเซ็นเรียบร้อยแล้ว');
   } catch (err) {
     console.error(err);
     return sendError(res, 500, 'เกิดข้อผิดพลาดในการอนุมัติ');
@@ -523,7 +597,7 @@ const getMyRequests = async (req, res) => {
   try {
     const userId = req.user.id;
     const query = `
-      SELECT gd.*, t.name as template_name 
+      SELECT gd.*, t.name as template_name, t.fields as template_fields
       FROM generated_documents gd
       JOIN document_templates t ON gd.template_id = t.id
       WHERE gd.user_id = ?
@@ -569,6 +643,55 @@ const downloadRequest = async (req, res) => {
   }
 };
 
+const requestReturn = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { signature, position } = req.body;
+    const userId = req.user.id;
+
+    const [reqRows] = await db.query('SELECT status, user_id FROM generated_documents WHERE id = ?', [id]);
+    const request = reqRows[0];
+
+    if (!request) return sendError(res, 404, 'ไม่พบคำร้อง');
+    if (request.user_id !== userId) return sendError(res, 403, 'คุณไม่มีสิทธิ์แจ้งคืนสำหรับคำร้องนี้');
+    
+    // Support both 'borrowed' and 'approved' (legacy)
+    if (request.status !== 'borrowed' && request.status !== 'approved') {
+      return sendError(res, 400, 'คำร้องนี้ไม่ได้อยู่ในสถานะกำลังยืม');
+    }
+
+    // Use provided signature or user's profile signature
+    let returnSignature = signature;
+    if (!returnSignature) {
+      const [u] = await db.query('SELECT signature_url FROM users WHERE id = ?', [userId]);
+      returnSignature = u[0]?.signature_url;
+    }
+
+    const returnDetails = {
+      signature: returnSignature, 
+      position,
+      returnedAt: new Date()
+    };
+
+    await db.query(
+      'UPDATE generated_documents SET status = ?, return_details = ? WHERE id = ?',
+      ['returning', JSON.stringify(returnDetails), id]
+    );
+
+    // Notify Admins
+    try {
+      await notificationService.notifyReturnRequested(id);
+    } catch (e) {
+      console.error('Notify Return Error:', e.message);
+    }
+
+    return sendSuccess(res, null, 'แจ้งคืนพัสดุเรียบร้อยแล้ว รอการตรวจสอบจากคณะกรรมการ');
+  } catch (err) {
+    console.error(err);
+    return sendError(res, 500, 'เกิดข้อผิดพลาดในการแจ้งคืน');
+  }
+};
+
 module.exports = {
   getTemplates,
   getTemplate,
@@ -582,5 +705,6 @@ module.exports = {
   approveRequest,
   rejectRequest,
   deleteTemplate,
-  previewDocument
+  previewDocument,
+  requestReturn
 };

@@ -16,7 +16,8 @@ const {
   rejectRequest,
   deleteTemplate,
   updateTemplate,
-  previewDocument
+  previewDocument,
+  requestReturn
 } = require('../controllers/document.controller');
 
 // Multer storage config
@@ -48,6 +49,7 @@ router.get('/my-requests',   verifyToken, getMyRequests);
 router.post('/generate',     verifyToken, generateDocument);
 router.post('/preview',      verifyToken, previewDocument);
 router.post('/request-approval', verifyToken, requestApproval);
+router.post('/requests/:id/return', verifyToken, requestReturn);
 router.get('/requests/:id/download', verifyToken, downloadRequest);
 
 // Admin Routes

@@ -362,6 +362,7 @@ const AdminDocuments = () => {
                                         <option value="date">Date (วันที่)</option>
                                         <option value="number">Number (ตัวเลข)</option>
                                         <option value="checkbox">Checkbox (เครื่องหมายถูก)</option>
+                                        <option value="select">Select (ตัวเลือก Dropdown)</option>
                                         <option value="table">Table (ตารางพัสดุ)</option>
                                         <option value="heading">Heading (หัวข้อส่วน)</option>
                                       </select>
@@ -379,6 +380,17 @@ const AdminDocuments = () => {
                                           className="w-full px-3 py-2 bg-white border border-indigo-100 rounded-xl text-xs font-bold outline-none placeholder:font-normal"
                                         />
                                         <p className="text-[9px] text-indigo-400 mt-1 ml-1 font-medium">* ชื่อคอลัมน์ต้องตรงกับใน Word (เช่น {"{{name}}"} ต้องใส่ name)</p>
+                                      </div>
+                                    )}
+                                    {String(watch(`fields.${index}.type`)) === 'select' && (
+                                      <div className="animate-in slide-in-from-top-2 duration-200 p-3 bg-amber-50/50 rounded-xl border border-amber-100/50">
+                                        <label className="block text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1.5 ml-1">ตัวเลือก (คั่นด้วยคอมม่า ,)</label>
+                                        <input 
+                                          {...register(`fields.${index}.options`)}
+                                          placeholder="เช่น นาย,นาง,นางสาว"
+                                          className="w-full px-3 py-2 bg-white border border-amber-100 rounded-xl text-xs font-bold outline-none placeholder:font-normal"
+                                        />
+                                        <p className="text-[9px] text-amber-500 mt-1 ml-1 font-medium">* ตัวอย่าง: นาย,นาง,นางสาว</p>
                                       </div>
                                     )}
                                   </div>
