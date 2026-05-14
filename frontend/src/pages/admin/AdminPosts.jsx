@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
+import PostDetailModal from '../../components/PostDetailModal';
 
 const AdminPosts = () => {
   const queryClient = useQueryClient();
@@ -16,7 +17,6 @@ const AdminPosts = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPost, setEditingPost] = useState(null);
 
-  const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [viewingPost, setViewingPost] = useState(null);
   const [replyTo, setReplyTo] = useState(null);
@@ -40,7 +40,7 @@ const AdminPosts = () => {
       const res = await api.get(`/posts/${viewingPost.id}`);
       return res.data.data.comments;
     },
-    enabled: !!viewingPost && (isCommentModalOpen || isViewModalOpen)
+    enabled: !!viewingPost && isViewModalOpen
   });
 
   // Create
@@ -128,16 +128,6 @@ const AdminPosts = () => {
     setIsModalOpen(false);
     setEditingPost(null);
     reset();
-  };
-
-  const openCommentModal = (post) => {
-    setViewingPost(post);
-    setIsCommentModalOpen(true);
-  };
-
-  const closeCommentModal = () => {
-    setIsCommentModalOpen(false);
-    setViewingPost(null);
   };
 
   const handleDelete = (id) => {
@@ -242,13 +232,9 @@ const AdminPosts = () => {
                     <div className="flex items-center gap-3 text-xs text-slate-500">
                       <span className="flex items-center gap-1" title="ยอดเข้าชม"><Eye size={14} /> {post.view_count}</span>
                       <span className="flex items-center gap-1 text-red-500 font-bold" title="ยอดถูกใจ"><Heart size={14} className="fill-red-500" /> {post.like_count || 0}</span>
-                      <button 
-                        onClick={() => openCommentModal(post)}
-                        className="flex items-center gap-1 hover:text-blue-600 transition-colors"
-                        title="คอมเมนต์"
-                      >
+                      <span className="flex items-center gap-1" title="คอมเมนต์">
                         <MessageSquare size={14} /> {post.comment_count}
-                      </button>
+                      </span>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-xs text-slate-500">
@@ -273,13 +259,7 @@ const AdminPosts = () => {
                       >
                         <Pin size={16} className={post.is_pinned ? 'fill-orange-600' : ''} />
                       </button>
-                      <button 
-                        onClick={() => openCommentModal(post)}
-                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="ดูความคิดเห็น"
-                      >
-                        <MessageSquare size={16} />
-                      </button>
+
                       <button 
                         onClick={() => openModal(post)}
                         className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
@@ -444,395 +424,21 @@ const AdminPosts = () => {
         </div>
       )}
 
-      {/* Comment Management Modal */}
-      {isCommentModalOpen && viewingPost && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-blue-50/50 rounded-t-3xl">
-              <div>
-                <h3 className="font-extrabold text-xl text-slate-800 flex items-center gap-2">
-                  <MessageSquare size={20} className="text-blue-600" />
-                  จัดการความคิดเห็น
-                </h3>
-                <p className="text-xs text-slate-500 mt-1 line-clamp-1">โพสต์: {viewingPost.title}</p>
-              </div>
-              <button onClick={closeCommentModal} className="text-slate-400 hover:text-slate-600 p-2 hover:bg-slate-100 rounded-full transition-colors">
-                <X size={24} />
-              </button>
-            </div>
-            
-            <div className="p-6 overflow-y-auto custom-scrollbar flex-1 bg-slate-50/30">
-              {loadingComments ? (
-                <div className="py-12 text-center text-slate-400">กำลังโหลดความคิดเห็น...</div>
-              ) : comments?.length > 0 ? (
-                <div className="space-y-6">
-                  {comments.filter(c => !c.parent_id).map(comment => (
-                    <div key={comment.id} className="space-y-3">
-                      {/* Main Comment */}
-                      <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm flex justify-between items-start gap-4">
-                        <div className="flex gap-3">
-                          <img 
-                            src={`https://ui-avatars.com/api/?name=${comment.user_name}&background=random`} 
-                            alt={comment.user_name}
-                            className="w-10 h-10 rounded-full border border-white shadow-sm shrink-0"
-                          />
-                          <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="font-bold text-sm text-slate-800">{comment.user_name}</span>
-                              <span className="text-[10px] text-slate-400">
-                                {format(new Date(comment.created_at), 'dd MMM HH:mm', { locale: th })}
-                              </span>
-                            </div>
-                            <p className="text-sm text-slate-600 leading-relaxed">{comment.content}</p>
-                          </div>
-                        </div>
-                        <div className="flex gap-1 shrink-0">
-                          <button 
-                            onClick={() => {
-                              setReplyTo(comment);
-                              const input = document.getElementById('admin-reply-input');
-                              if (input) {
-                                input.value = '';
-                                input.focus();
-                              }
-                            }}
-                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
-                            title="ตอบกลับ"
-                          >
-                            <MessageSquare size={16} />
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteComment(comment.id)}
-                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
-                            title="ลบความคิดเห็น"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </div>
 
-                      {/* Replies (All descendants) */}
-                      <div className="ml-12 space-y-3 border-l-2 border-slate-200 pl-4">
-                        {comments.filter(r => {
-                          const isChild = r.parent_id === comment.id;
-                          const isGrandChild = comments.some(p => p.id === r.parent_id && p.parent_id === comment.id);
-                          const isGreatGrandChild = comments.some(p => {
-                            const gp = comments.find(x => x.id === p.parent_id);
-                            return p.id === r.parent_id && gp?.parent_id === comment.id;
-                          });
-                          return isChild || isGrandChild || isGreatGrandChild;
-                        }).map(reply => {
-                          const repliedToUser = comments.find(c => c.id === reply.parent_id)?.user_name;
-                          return (
-                            <div key={reply.id} className="bg-blue-50/50 rounded-2xl p-3 border border-blue-100 flex justify-between items-start gap-4 relative">
-                              <div className="absolute -left-4 top-1/2 w-4 h-0.5 bg-slate-200"></div>
-                              <div className="flex gap-3">
-                                <img 
-                                  src={`https://ui-avatars.com/api/?name=${reply.user_name}&background=random`} 
-                                  alt={reply.user_name}
-                                  className="w-7 h-7 rounded-full border border-white shadow-sm shrink-0"
-                                />
-                                <div>
-                                  <div className="flex items-center gap-2 mb-0.5">
-                                    <span className="font-bold text-xs text-slate-800">{reply.user_name}</span>
-                                    {reply.role === 'admin' && <span className="px-1.5 py-0.5 bg-blue-600 text-white text-[8px] font-black rounded uppercase">Admin</span>}
-                                    <span className="text-[9px] text-slate-400">
-                                      {format(new Date(reply.created_at), 'dd MMM HH:mm', { locale: th })}
-                                    </span>
-                                  </div>
-                                  <p className="text-sm text-slate-600 leading-relaxed">
-                                    {reply.parent_id !== comment.id && repliedToUser && (
-                                      <span className="text-blue-600 font-bold mr-1">@{repliedToUser}</span>
-                                    )}
-                                    {reply.content}
-                                  </p>
-                                  <button 
-                                    onClick={() => {
-                                      setReplyTo(reply);
-                                      const input = document.getElementById('admin-reply-input');
-                                      if (input) {
-                                        input.value = '';
-                                        input.focus();
-                                      }
-                                    }}
-                                    className="mt-1 text-[10px] font-bold text-blue-600 hover:underline flex items-center gap-1"
-                                  >
-                                    ตอบกลับ
-                                  </button>
-                                </div>
-                              </div>
-                              <button 
-                                onClick={() => handleDeleteComment(reply.id)}
-                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                title="ลบ"
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="py-20 text-center">
-                  <MessageSquare size={48} className="mx-auto mb-3 text-slate-200" />
-                  <p className="text-slate-400">ยังไม่มีความคิดเห็นในโพสต์นี้</p>
-                </div>
-              )}
-            </div>
 
-            <div className="p-4 border-t border-slate-100 bg-white rounded-b-3xl shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
-              {replyTo && (
-                <div className="mb-3 px-4 py-2 bg-blue-50 border border-blue-100 rounded-xl flex justify-between items-center animate-in slide-in-from-bottom-2 duration-200">
-                  <p className="text-xs text-blue-700 font-bold">
-                    กำลังตอบกลับคอมเมนต์ของ <span className="underline">{replyTo.user_name}</span>
-                  </p>
-                  <button onClick={() => setReplyTo(null)} className="text-blue-400 hover:text-blue-600">
-                    <X size={14} />
-                  </button>
-                </div>
-              )}
-              <form 
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const text = e.target.reply.value;
-                  if (text.trim()) {
-                    addCommentMutation.mutate({ text, parentId: replyTo?.id });
-                    e.target.reply.value = '';
-                  }
-                }}
-                className="flex gap-2"
-              >
-                <input 
-                  id="admin-reply-input"
-                  name="reply"
-                  type="text" 
-                  placeholder={replyTo ? `เขียนข้อความตอบกลับ ${replyTo.user_name}...` : "พิมพ์ข้อความในโพสต์นี้..."}
-                  className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-100 focus:bg-white outline-none transition-all"
-                />
-                <button 
-                  type="submit"
-                  disabled={addCommentMutation.isPending}
-                  className="bg-blue-600 text-white px-6 py-3 rounded-2xl text-sm font-black hover:bg-blue-700 disabled:bg-slate-300 transition-all shadow-lg shadow-blue-100 active:scale-95"
-                >
-                  {addCommentMutation.isPending ? '...' : 'ส่ง'}
-                </button>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-
-        {/* View Post Preview Modal */}
-        {isViewModalOpen && viewingPost && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-            <div className="bg-white rounded-[2.5rem] w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-300">
-              {/* Modal Header */}
-              <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-10">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-2xl">
-                    <Eye size={24} />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-black text-slate-800">ตัวอย่างโพสต์</h3>
-                    <p className="text-xs text-slate-500">นี่คือลักษณะที่สมาชิกจะเห็นบนหน้า News Feed</p>
-                  </div>
-                </div>
-                <button onClick={() => setIsViewModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400">
-                  <X size={24} />
-                </button>
-              </div>
-
-              {/* Modal Content */}
-              <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
-                <div className="space-y-6">
-                  {/* Meta */}
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">
-                      {viewingPost.author_name?.charAt(0) || 'A'}
-                    </div>
-                    <div>
-                      <div className="font-bold text-slate-800">{viewingPost.author_name}</div>
-                      <div className="text-xs text-slate-400">
-                        {format(new Date(viewingPost.created_at), 'dd MMMM yyyy HH:mm น.', { locale: th })}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Body */}
-                  <h1 className="text-2xl font-black text-slate-900 leading-tight">
-                    {viewingPost.title}
-                  </h1>
-
-                  {viewingPost.image_url && (
-                    <div className="rounded-3xl overflow-hidden border border-slate-100 shadow-lg">
-                      <img src={viewingPost.image_url} alt="Post" className="w-full h-auto object-contain bg-slate-50" />
-                    </div>
-                  )}
-
-                  <div className="text-slate-600 leading-relaxed whitespace-pre-line text-lg">
-                    {viewingPost.content}
-                  </div>
-
-                  <div className="pt-6 border-t border-slate-100 flex items-center gap-6">
-                    <div className="flex items-center gap-2 text-slate-400 font-bold">
-                      <Heart size={20} /> {viewingPost.like_count || 0} ไลก์
-                    </div>
-                    <div className="flex items-center gap-2 text-slate-400 font-bold">
-                      <MessageSquare size={20} /> {viewingPost.comment_count || 0} ความคิดเห็น
-                    </div>
-                  </div>
-
-                  {/* Comments Section (User-like view) */}
-                  <div className="pt-8 mt-4 border-t border-slate-100">
-                    <h4 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-2">
-                      <MessageSquare size={20} className="text-blue-600" />
-                      บทสนทนาทั้งหมด
-                    </h4>
-                    
-                    {loadingComments ? (
-                      <div className="py-10 text-center text-slate-400">กำลังโหลดความคิดเห็น...</div>
-                    ) : comments?.length > 0 ? (
-                      <div className="space-y-6">
-                        {comments.filter(c => !c.parent_id).map(comment => (
-                          <div key={comment.id} className="space-y-4">
-                            {/* Root Comment */}
-                            <div className="flex gap-3">
-                              <img 
-                                src={`https://ui-avatars.com/api/?name=${comment.user_name}&background=random`} 
-                                alt="" 
-                                className="w-10 h-10 rounded-full border border-white shadow-sm shrink-0" 
-                              />
-                              <div className="bg-slate-50 rounded-2xl p-4 flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className="font-bold text-sm text-slate-800">{comment.user_name}</span>
-                                  {comment.role === 'admin' && <span className="px-1.5 py-0.5 bg-blue-600 text-white text-[8px] font-black rounded uppercase">Admin</span>}
-                                  <span className="text-[10px] text-slate-400">
-                                    {format(new Date(comment.created_at), 'dd MMM HH:mm', { locale: th })}
-                                  </span>
-                                </div>
-                                <p className="text-sm text-slate-600 leading-relaxed">{comment.content}</p>
-                              </div>
-                            </div>
-
-                            {/* Threaded Replies */}
-                            <div className="ml-12 space-y-4 border-l-2 border-slate-100 pl-4">
-                              {comments.filter(r => {
-                                const isChild = r.parent_id === comment.id;
-                                const isGrandChild = comments.some(p => p.id === r.parent_id && p.parent_id === comment.id);
-                                const isGreatGrandChild = comments.some(p => {
-                                  const gp = comments.find(x => x.id === p.parent_id);
-                                  return p.id === r.parent_id && gp?.parent_id === comment.id;
-                                });
-                                return isChild || isGrandChild || isGreatGrandChild;
-                              }).map(reply => {
-                                const repliedToUser = comments.find(c => c.id === reply.parent_id)?.user_name;
-                                return (
-                                  <div key={reply.id} className="flex gap-3 relative group">
-                                    <div className="absolute -left-4 top-5 w-4 h-[2px] bg-slate-100"></div>
-                                    <img 
-                                      src={`https://ui-avatars.com/api/?name=${reply.user_name}&background=random`} 
-                                      alt="" 
-                                      className="w-8 h-8 rounded-full border border-white shadow-sm shrink-0" 
-                                    />
-                                    <div className="bg-blue-50/50 border border-blue-100/50 rounded-2xl p-3 flex-1">
-                                      <div className="flex items-center gap-2 mb-0.5">
-                                        <span className="font-bold text-xs text-slate-800">{reply.user_name}</span>
-                                        {reply.role === 'admin' && <span className="px-1.5 py-0.5 bg-blue-600 text-white text-[8px] font-black rounded uppercase">Admin</span>}
-                                        <span className="text-[9px] text-slate-400">
-                                          {format(new Date(reply.created_at), 'dd MMM HH:mm', { locale: th })}
-                                        </span>
-                                      </div>
-                                      <p className="text-xs text-slate-600 leading-relaxed">
-                                        {reply.parent_id !== comment.id && repliedToUser && (
-                                          <span className="text-blue-600 font-bold mr-1">@{repliedToUser}</span>
-                                        )}
-                                        {reply.content}
-                                      </p>
-                                      <button 
-                                        onClick={() => {
-                                          setReplyTo(reply);
-                                          const input = document.getElementById('preview-reply-input');
-                                          if (input) {
-                                            input.value = '';
-                                            input.focus();
-                                          }
-                                        }}
-                                        className="mt-1 text-[10px] font-bold text-blue-600 hover:underline flex items-center gap-1"
-                                      >
-                                        ตอบกลับ
-                                      </button>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="py-10 text-center text-slate-300 italic text-sm">ยังไม่มีความคิดเห็นในโพสต์นี้</div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Preview Modal Footer & Reply Input */}
-              <div className="p-4 bg-white border-t border-slate-100 shadow-[0_-10px_40px_rgba(0,0,0,0.04)] sticky bottom-0">
-                {replyTo && (
-                  <div className="mb-3 px-4 py-2 bg-blue-50 border border-blue-100 rounded-xl flex justify-between items-center animate-in slide-in-from-bottom-2 duration-200 mx-4">
-                    <p className="text-xs text-blue-700 font-bold">
-                      ตอบกลับคอมเมนต์ของ <span className="underline">{replyTo.user_name}</span>
-                    </p>
-                    <button onClick={() => setReplyTo(null)} className="text-blue-400 hover:text-blue-600">
-                      <X size={14} />
-                    </button>
-                  </div>
-                )}
-                
-                <div className="flex gap-3 items-center">
-                   <form 
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      const text = e.target.reply.value;
-                      if (text.trim()) {
-                        addCommentMutation.mutate({ text, parentId: replyTo?.id });
-                        e.target.reply.value = '';
-                      }
-                    }}
-                    className="flex-1 flex gap-2 pl-4"
-                  >
-                    <input 
-                      id="preview-reply-input"
-                      name="reply"
-                      type="text" 
-                      placeholder={replyTo ? `ตอบกลับ ${replyTo.user_name}...` : "พิมพ์ความคิดเห็นของคุณ..."}
-                      className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3 text-sm focus:ring-2 focus:ring-blue-100 focus:bg-white outline-none transition-all"
-                    />
-                    <button 
-                      type="submit"
-                      disabled={addCommentMutation.isPending}
-                      className="bg-blue-600 text-white px-6 py-3 rounded-2xl text-sm font-black hover:bg-blue-700 disabled:bg-slate-300 transition-all shadow-lg shadow-blue-100"
-                    >
-                      {addCommentMutation.isPending ? '...' : 'ส่ง'}
-                    </button>
-                  </form>
-
-                  <div className="h-10 w-px bg-slate-100 mx-1"></div>
-
-                  <button 
-                    onClick={() => setIsViewModalOpen(false)}
-                    className="px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-2xl font-black hover:bg-slate-50 transition-all whitespace-nowrap text-sm"
-                  >
-                    ปิดหน้าต่าง
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+      {/* Immersive Post Detail Modal (Shared Component) */}
+      <PostDetailModal 
+        post={viewingPost}
+        isOpen={isViewModalOpen}
+        onClose={() => setIsViewModalOpen(false)}
+        isAdmin={true}
+        onLike={(postId) => {
+          api.post(`/posts/${postId}/like`).then(() => {
+            queryClient.invalidateQueries(['admin_posts']);
+            queryClient.invalidateQueries(['posts']);
+          });
+        }}
+      />
     </div>
   );
 };

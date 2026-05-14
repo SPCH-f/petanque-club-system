@@ -5,9 +5,12 @@ import { th } from 'date-fns/locale';
 import { Heart, MessageCircle, Pin, Bookmark, X } from 'lucide-react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
+import PostDetailModal from './PostDetailModal';
 
 const PostCard = ({ post, onLike }) => {
   const [showComments, setShowComments] = useState(false);
+  const [showFullContent, setShowFullContent] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [replyTo, setReplyTo] = useState(null);
   const queryClient = useQueryClient();
@@ -91,13 +94,41 @@ const PostCard = ({ post, onLike }) => {
 
         {/* Content */}
         <h3 className="font-bold text-lg mb-2 text-slate-900">{post.title}</h3>
-        <p className="text-slate-600 whitespace-pre-line text-sm leading-relaxed mb-4">
-          {post.content}
-        </p>
+        <div className="text-slate-600 whitespace-pre-line text-sm leading-relaxed mb-4">
+          {post.content.length > 250 && !showFullContent ? (
+            <>
+              {post.content.substring(0, 250)}...
+              <button 
+                onClick={() => setShowFullContent(true)}
+                className="text-blue-600 font-bold hover:underline ml-1 inline-block"
+              >
+                อ่านเพิ่มเติม
+              </button>
+            </>
+          ) : (
+            <>
+              {post.content}
+              {post.content.length > 250 && (
+                <button 
+                  onClick={() => setShowFullContent(false)}
+                  className="text-blue-600 font-bold hover:underline ml-2 inline-block"
+                >
+                  ย่อกลับ
+                </button>
+              )}
+            </>
+          )}
+        </div>
 
         {post.image_url && (
-          <div className="mb-4 -mx-5 border-y border-slate-100 bg-slate-50">
-            <img src={post.image_url} alt="post" className="w-full h-auto max-h-96 object-contain" />
+          <div 
+            className="mb-4 -mx-5 border-y border-slate-100 bg-slate-50 cursor-zoom-in group relative"
+            onClick={() => setIsPreviewOpen(true)}
+          >
+            <img src={post.image_url} alt="post" className="w-full h-auto max-h-96 object-contain transition-transform duration-500 group-hover:scale-[1.02]" />
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+               <span className="bg-white/20 backdrop-blur-md text-white px-4 py-2 rounded-full text-xs font-bold border border-white/30">คลิกเพื่อดูรูปเต็ม</span>
+            </div>
           </div>
         )}
 
@@ -165,7 +196,6 @@ const PostCard = ({ post, onLike }) => {
                         <button 
                           onClick={() => {
                             setReplyTo(comment);
-                            // Scroll to input would be nice, but simple focus is enough for now
                           }}
                           className="mt-2 text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 transition-colors"
                         >
@@ -175,10 +205,9 @@ const PostCard = ({ post, onLike }) => {
                       </div>
                     </div>
 
-                    {/* Nested Replies (All descendants) */}
+                    {/* Nested Replies */}
                     <div className="ml-10 space-y-3 border-l-2 border-slate-200 pl-4">
                       {comments.filter(r => {
-                        // Show if it's a direct child of this main comment OR a child of any reply in this thread
                         const isChild = r.parent_id === comment.id;
                         const isGrandChild = comments.some(parentReply => parentReply.id === r.parent_id && parentReply.parent_id === comment.id);
                         const isGreatGrandChild = comments.some(parentReply => {
@@ -265,6 +294,14 @@ const PostCard = ({ post, onLike }) => {
           </div>
         </div>
       )}
+
+      {/* Post Detail Modal */}
+      <PostDetailModal 
+        post={post} 
+        isOpen={isPreviewOpen} 
+        onClose={() => setIsPreviewOpen(false)} 
+        onLike={onLike}
+      />
     </div>
   );
 };

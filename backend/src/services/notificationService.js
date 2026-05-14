@@ -139,6 +139,42 @@ const notifyAdminsOfComment = async (userName, postTitle) => {
   }
 };
 
+const notifyAdminsOfDocumentRequest = async (userName, templateName) => {
+  try {
+    const [admins] = await db.query("SELECT id FROM users WHERE role = 'admin' AND deleted_at IS NULL");
+    const notifications = admins.map(admin => createNotification({
+      userId: admin.id,
+      type: 'admin_document_request',
+      title: '📝 มีคำขออนุมัติเอกสารใหม่',
+      message: `ผู้ใช้ ${userName} ส่งคำขออนุมัติ "${templateName}" รอการลงนาม`,
+      link: '/admin/approvals'
+    }));
+    await Promise.all(notifications);
+  } catch (err) {
+    console.error('Notify admins error:', err.message);
+  }
+};
+
+const notifyDocumentApproved = (userId, templateName, isFullyApproved) =>
+  createNotification({
+    userId,
+    type:    'document_approved',
+    title:   isFullyApproved ? '✅ เอกสารอนุมัติครบถ้วนแล้ว' : '🖋️ มีการลงนามในเอกสารแล้ว',
+    message: isFullyApproved 
+      ? `เอกสาร "${templateName}" ได้รับการอนุมัติและลงนามครบถ้วนแล้ว คุณสามารถดาวน์โหลดได้ทันที`
+      : `เอกสาร "${templateName}" มีการลงนามเพิ่มแล้ว รอการลงนามจากลำดับถัดไป`,
+    link:    '/history',
+  });
+
+const notifyDocumentRejected = (userId, templateName) =>
+  createNotification({
+    userId,
+    type:    'document_rejected',
+    title:   '❌ คำขออนุมัติเอกสารไม่ผ่าน',
+    message: `คำขออนุมัติเอกสาร "${templateName}" ถูกปฏิเสธ`,
+    link:    '/history',
+  });
+
 module.exports = {
   createNotification,
   notifyBookingSuccess,
@@ -151,5 +187,8 @@ module.exports = {
   notifyLoanReturned,
   notifyAdminsOfLoan,
   notifyAdminsOfBooking,
-  notifyAdminsOfComment
+  notifyAdminsOfComment,
+  notifyAdminsOfDocumentRequest,
+  notifyDocumentApproved,
+  notifyDocumentRejected
 };

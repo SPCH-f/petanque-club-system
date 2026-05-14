@@ -206,7 +206,7 @@ const Committee = () => {
         {[
           { key: 'all', label: 'ทั้งหมด' },
           { key: 'advisor', label: 'อาจารย์ที่ปรึกษา' },
-          { key: 'committee', label: 'คณะกรรมการนิสิต' },
+          { key: 'committee', label: 'คณะกรรมการชมรม' },
         ].map(tab => (
           <button
             key={tab.key}

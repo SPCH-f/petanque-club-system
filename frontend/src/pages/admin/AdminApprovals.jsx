@@ -102,6 +102,20 @@ const AdminApprovals = () => {
                 <span className="font-bold">{req.user_name}</span>
               </div>
 
+              {/* Progress Indicator */}
+              <div className="mt-2 mb-6">
+                <div className="flex justify-between text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5 px-1">
+                  <span>ความคืบหน้าการลงนาม</span>
+                  <span>{Object.keys(req.admin_approvals || {}).length}/4</span>
+                </div>
+                <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-blue-600 transition-all duration-1000 ease-out" 
+                    style={{ width: `${(Object.keys(req.admin_approvals || {}).length / 4) * 100}%` }}
+                  ></div>
+                </div>
+              </div>
+
               <div className="flex gap-2">
                 <button 
                   onClick={() => setViewingRequest(req)}
@@ -149,8 +163,35 @@ const AdminApprovals = () => {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
+              {/* Approval Progress Tracker */}
+              <div className="bg-slate-50 p-6 rounded-[2.5rem] border border-slate-100">
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 px-2">สถานะการลงนาม (Signature Roles)</h4>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {[
+                    { id: 'approver', label: 'Admin 1 (ผู้ตรวจ)' },
+                    { id: 'advisor1', label: 'Admin 2 (ที่ปรึกษา 1)' },
+                    { id: 'advisor2', label: 'Admin 3 (ที่ปรึกษา 2)' },
+                    { id: 'president', label: 'Admin 4 (ประธาน)' }
+                  ].map(role => {
+                    const signed = viewingRequest.admin_approvals?.[role.id];
+                    return (
+                      <div key={role.id} className={`p-3 rounded-2xl border text-center transition-all ${
+                        signed ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-white border-slate-200 text-slate-400 opacity-60'
+                      }`}>
+                        <div className="flex justify-center mb-1">
+                          {signed ? <CheckCircle size={16} /> : <Clock size={16} />}
+                        </div>
+                        <div className="text-[9px] font-black uppercase leading-tight">{role.label}</div>
+                        {signed && <div className="text-[8px] mt-1 font-bold">ลงชื่อแล้ว</div>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-2">ข้อมูลในเอกสาร</h4>
                 {Object.entries(viewingRequest.data || {}).map(([key, value]) => (
                   <div key={key} className={`p-5 bg-slate-50 rounded-[2rem] border border-slate-100 ${Array.isArray(value) ? 'md:col-span-2' : ''}`}>
                     <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">{key}</div>

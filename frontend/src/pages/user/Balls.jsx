@@ -7,6 +7,10 @@ import { CircleDot, Clock, ShieldCheck, AlertCircle, X, Search, History } from '
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 
+const TIME_OPTIONS = [
+  '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00'
+];
+
 const Balls = () => {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
@@ -60,13 +64,13 @@ const Balls = () => {
   const openBorrowModal = (ball) => {
     setSelectedBall(ball);
     setBorrowModalOpen(true);
-    // Set default borrow time to now, and return time to 2 hours later
     const now = new Date();
     const twoHoursLater = new Date(now.getTime() + 2 * 60 * 60 * 1000);
     
     reset({
-      borrowTime: format(now, 'HH:mm'),
-      returnTime: format(twoHoursLater, 'HH:mm')
+      borrowTime: TIME_OPTIONS.includes(format(now, 'HH:mm')) ? format(now, 'HH:mm') : '15:00',
+      returnTime: TIME_OPTIONS.includes(format(twoHoursLater, 'HH:mm')) ? format(twoHoursLater, 'HH:mm') : '22:00',
+      notes: ''
     });
   };
 
@@ -77,9 +81,7 @@ const Balls = () => {
   };
 
   const onBorrowSubmit = (data) => {
-    // Construct loan_start and loan_end datetimes
     const now = new Date();
-    
     const start = new Date(now);
     const [sH, sM] = data.borrowTime.split(':');
     start.setHours(parseInt(sH), parseInt(sM), 0);
@@ -88,7 +90,6 @@ const Balls = () => {
     const [eH, eM] = data.returnTime.split(':');
     end.setHours(parseInt(eH), parseInt(eM), 0);
     
-    // Logic for next-day return if end < start
     if (end <= start) {
       end.setDate(end.getDate() + 1);
     }
@@ -107,7 +108,6 @@ const Balls = () => {
     }
   };
 
-  // Extract unique brands, models, and weights with memoization to prevent infinite loops
   const balls = React.useMemo(() => ballsData || [], [ballsData]);
   
   const uniqueBrands = React.useMemo(() => 
@@ -141,7 +141,6 @@ const Balls = () => {
     });
   }, [balls, searchTerm, brandFilter, modelFilter, weightFilter]);
 
-  // Reset model filter if it's no longer available for the selected brand
   React.useEffect(() => {
     if (modelFilter !== 'all' && !uniqueModels.includes(modelFilter)) {
       setModelFilter('all');
@@ -150,17 +149,33 @@ const Balls = () => {
 
   if (loadingBalls || loadingLoans) {
     return (
-      <div className="flex h-[60vh] items-center justify-center">
-        <div className="flex flex-col items-center text-blue-500">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
-          <p className="font-medium">กำลังโหลดข้อมูลอุปกรณ์...</p>
+      <div className="space-y-8 animate-in fade-in duration-500">
+        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex justify-between items-center">
+           <div className="space-y-2">
+              <div className="h-8 w-48 bg-slate-100 rounded-lg animate-pulse"></div>
+              <div className="h-4 w-64 bg-slate-50 rounded-lg animate-pulse"></div>
+           </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+            <div key={i} className="bg-white rounded-3xl h-96 shadow-sm border border-slate-100 animate-pulse overflow-hidden">
+               <div className="h-44 bg-slate-100"></div>
+               <div className="p-5 space-y-4">
+                  <div className="h-6 w-3/4 bg-slate-100 rounded-lg"></div>
+                  <div className="h-4 w-1/2 bg-slate-50 rounded-lg"></div>
+                  <div className="grid grid-cols-2 gap-2">
+                     <div className="h-10 bg-slate-50 rounded-xl"></div>
+                     <div className="h-10 bg-slate-50 rounded-xl"></div>
+                  </div>
+                  <div className="h-12 bg-slate-100 rounded-2xl w-full"></div>
+               </div>
+            </div>
+          ))}
         </div>
       </div>
     );
   }
 
-
-  
   const myLoans = myLoansData || [];
   const activeLoans = myLoans.filter(l => l.status === 'active' || l.status === 'pending' || l.status === 'returning');
 
@@ -245,20 +260,20 @@ const Balls = () => {
       )}
 
       {/* Header & Search */}
-      <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-6">
+      <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-8">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">ยืมลูกเปตอง</h2>
-          <p className="text-slate-500 text-sm">ค้นหาและยืมอุปกรณ์จากคลังส่วนกลาง</p>
+          <h2 className="text-3xl font-black text-slate-800 tracking-tight">ยืมลูกเปตอง</h2>
+          <p className="text-slate-400 text-sm font-medium">ค้นหาและเลือกยืมอุปกรณ์คุณภาพสูงจากคลังส่วนกลางของชมรม</p>
         </div>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="sm:col-span-2 lg:col-span-2 relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
               <Search className="h-5 w-5 text-slate-400" />
             </div>
             <input
               type="text"
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 outline-none text-sm transition-all"
+              className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-100 outline-none text-sm font-bold transition-all shadow-inner"
               placeholder="ค้นหารหัส, รุ่น หรือ แบรนด์..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -267,7 +282,7 @@ const Balls = () => {
 
           <div className="relative">
             <select
-              className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 outline-none text-sm appearance-none cursor-pointer transition-all"
+              className="w-full pl-4 pr-10 py-3.5 bg-slate-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-100 outline-none text-sm font-bold appearance-none cursor-pointer transition-all shadow-inner"
               value={brandFilter}
               onChange={(e) => setBrandFilter(e.target.value)}
             >
@@ -276,14 +291,14 @@ const Balls = () => {
                 <option key={brand} value={brand}>{brand}</option>
               ))}
             </select>
-            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-              <CircleDot size={16} className="text-slate-400" />
+            <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+              <CircleDot size={18} className="text-slate-300" />
             </div>
           </div>
 
           <div className="relative">
             <select
-              className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 outline-none text-sm appearance-none cursor-pointer transition-all"
+              className="w-full pl-4 pr-10 py-3.5 bg-slate-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-100 outline-none text-sm font-bold appearance-none cursor-pointer transition-all shadow-inner"
               value={modelFilter}
               onChange={(e) => setModelFilter(e.target.value)}
             >
@@ -292,14 +307,14 @@ const Balls = () => {
                 <option key={model} value={model}>{model}</option>
               ))}
             </select>
-            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-              <CircleDot size={16} className="text-slate-400" />
+            <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+              <CircleDot size={18} className="text-slate-300" />
             </div>
           </div>
 
           <div className="relative">
             <select
-              className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-100 outline-none text-sm appearance-none cursor-pointer transition-all"
+              className="w-full pl-4 pr-10 py-3.5 bg-slate-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-100 outline-none text-sm font-bold appearance-none cursor-pointer transition-all shadow-inner"
               value={weightFilter}
               onChange={(e) => setWeightFilter(e.target.value)}
             >
@@ -308,56 +323,60 @@ const Balls = () => {
                 <option key={weight} value={String(weight)}>{weight} g</option>
               ))}
             </select>
-            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-              <CircleDot size={16} className="text-slate-400" />
+            <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+              <CircleDot size={18} className="text-slate-300" />
             </div>
           </div>
         </div>
       </div>
 
       {/* Balls Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {filteredBalls.map(ball => (
-          <div key={ball.id} className="bg-white rounded-3xl shadow-lg border border-slate-100 hover:shadow-2xl transition-all duration-500 flex flex-col group overflow-hidden">
-            {/* Ball Image Header */}
-            <div className="h-44 bg-slate-100 relative overflow-hidden">
+          <div key={ball.id} className="bg-white rounded-[2rem] shadow-sm hover:shadow-2xl hover:shadow-blue-100/50 border border-slate-100 transition-all duration-500 flex flex-col group overflow-hidden relative">
+            <div className="h-48 bg-slate-50 relative overflow-hidden">
               {ball.image_url ? (
-                <img src={ball.image_url} alt={ball.brand} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                <img src={ball.image_url} alt={ball.brand} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
               ) : (
-                <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-slate-400">
-                  <CircleDot size={48} className="opacity-20" />
+                <div className="w-full h-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-slate-300">
+                  <CircleDot size={64} className="opacity-10 group-hover:rotate-45 transition-transform duration-700" />
                 </div>
               )}
-              <div className="absolute top-3 right-3">
+              <div className="absolute top-4 right-4 z-10">
                 {getStatusBadge(ball.status)}
               </div>
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
-                <h3 className="font-black text-white text-lg leading-tight">{ball.brand}</h3>
-                <p className="text-white/80 text-[10px] font-bold uppercase tracking-[0.2em]">{ball.model}</p>
-              </div>
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
             </div>
             
-            <div className="p-5 space-y-4 flex-1 flex flex-col">
-              <div className="space-y-2 text-sm text-slate-500 flex-1">
-                <div className="flex items-center justify-between">
-                   <span className="text-[10px] uppercase font-black text-slate-400 tracking-wider">รหัสอุปกรณ์</span>
-                   <span className="font-mono bg-slate-100 px-2 py-0.5 rounded text-xs font-black text-slate-700 border border-slate-200">{ball.code}</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2 pt-2">
-                  <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
-                    <p className="text-[9px] font-black text-slate-400 uppercase">น้ำหนัก</p>
-                    <p className="font-bold text-slate-700">{ball.weight ? `${ball.weight} g` : '-'}</p>
+            <div className="p-6 space-y-5 flex-1 flex flex-col">
+              <div className="flex-1 space-y-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-black text-xl text-slate-800 leading-tight group-hover:text-blue-600 transition-colors">{ball.brand}</h3>
+                    <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mt-0.5">{ball.model}</p>
                   </div>
-                  <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
-                    <p className="text-[9px] font-black text-slate-400 uppercase">ขนาด</p>
-                    <p className="font-bold text-slate-700">{ball.diameter ? `${ball.diameter} mm` : '-'}</p>
+                  <span className="font-mono bg-slate-100 px-2.5 py-1 rounded-lg text-[10px] font-black text-slate-500 border border-slate-200">#{ball.code}</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-slate-50/50 p-3 rounded-2xl border border-slate-100 shadow-inner group-hover:bg-white transition-colors duration-500">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">น้ำหนัก</p>
+                    <p className="font-black text-slate-700 text-sm">{ball.weight ? `${ball.weight} g` : '-'}</p>
+                  </div>
+                  <div className="bg-slate-50/50 p-3 rounded-2xl border border-slate-100 shadow-inner group-hover:bg-white transition-colors duration-500">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">ขนาด</p>
+                    <p className="font-black text-slate-700 text-sm">{ball.diameter ? `${ball.diameter} mm` : '-'}</p>
                   </div>
                 </div>
-                <p className="flex items-center gap-2 pt-1"><span className="text-[10px] font-black text-slate-400 uppercase">ลวดลาย:</span> <span className="font-bold text-slate-600">{ball.pattern || '-'}</span></p>
+
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
+                  <span className="text-[10px] font-black text-slate-300 uppercase">ลวดลาย:</span>
+                  <span>{ball.pattern || 'เรียบ'}</span>
+                </div>
                 
                 {ball.condition_note && (
-                  <div className="text-orange-600 text-[10px] mt-2 bg-orange-50 p-2 rounded-xl flex gap-2 items-start border border-orange-100 font-bold leading-tight">
-                    <AlertCircle size={14} className="shrink-0" />
+                  <div className="text-orange-600 text-[10px] bg-orange-50/50 p-3 rounded-2xl flex gap-2 items-start border border-orange-100 font-bold leading-relaxed">
+                    <AlertCircle size={14} className="shrink-0 mt-0.5" />
                     <span>{ball.condition_note}</span>
                   </div>
                 )}
@@ -366,106 +385,119 @@ const Balls = () => {
               <button 
                 onClick={() => openBorrowModal(ball)}
                 disabled={ball.status !== 'available'}
-                className={`w-full py-3 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${
+                className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-2 transition-all duration-300 ${
                   ball.status === 'available' 
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-100 hover:bg-blue-700 hover:-translate-y-0.5' 
-                    : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
+                    ? 'bg-slate-900 text-white shadow-xl shadow-slate-200 hover:bg-blue-600 hover:shadow-blue-100 hover:-translate-y-1' 
+                    : 'bg-slate-50 text-slate-300 cursor-not-allowed border border-slate-100'
                 }`}
               >
-                {ball.status === 'available' ? 'ทำเรื่องขอยืม' : 'ไม่พร้อมใช้งาน'}
+                {ball.status === 'available' ? 'เริ่มขั้นตอนการยืม' : 'ไม่พร้อมให้บริการ'}
               </button>
             </div>
           </div>
         ))}
-        {filteredBalls.length === 0 && (
-          <div className="col-span-full text-center py-20 text-slate-500 bg-white rounded-2xl border border-dashed border-slate-200">
-            <CircleDot size={48} className="mx-auto mb-4 text-slate-200" />
-            <p className="text-lg font-medium text-slate-400">ไม่พบข้อมูลลูกเปตองที่ค้นหา</p>
-          </div>
-        )}
       </div>
+
+      {filteredBalls.length === 0 && (
+        <div className="col-span-full text-center py-24 bg-white rounded-[2.5rem] border border-dashed border-slate-200">
+          <CircleDot size={64} className="mx-auto mb-6 text-slate-100 animate-pulse" />
+          <p className="text-xl font-black text-slate-400">ไม่พบข้อมูลลูกเปตองที่ค้นหา</p>
+          <p className="text-sm text-slate-300 font-bold mt-2">ลองเปลี่ยนคำค้นหาหรือตัวกรองดูอีกครั้ง</p>
+        </div>
+      )}
 
       {/* Borrow Modal */}
       {borrowModalOpen && selectedBall && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-blue-50">
-              <h3 className="font-bold text-lg text-blue-900 flex items-center gap-2">
-                <ShieldCheck size={20} className="text-blue-600" />
-                ยืนยันการยืมอุปกรณ์
-              </h3>
-              <button onClick={closeBorrowModal} className="text-blue-400 hover:text-blue-600 transition-colors">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xl animate-in fade-in duration-300">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-md shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white">
+              <div>
+                <h3 className="font-black text-2xl text-slate-800 flex items-center gap-3">
+                  <ShieldCheck size={28} className="text-blue-600" />
+                  ยืมอุปกรณ์
+                </h3>
+                <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">ยืนยันข้อมูลการยืมของคุณ</p>
+              </div>
+              <button onClick={closeBorrowModal} className="w-10 h-10 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-all">
                 <X size={24} />
               </button>
             </div>
             
-            <form onSubmit={handleSubmit(onBorrowSubmit)} className="p-5 space-y-4">
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                <p className="text-[10px] uppercase font-bold text-blue-600 mb-1">อุปกรณ์ที่ต้องการยืม:</p>
-                <div className="flex justify-between items-start">
+            <form onSubmit={handleSubmit(onBorrowSubmit)} className="p-8 space-y-6">
+              <div className="bg-slate-50/50 p-6 rounded-3xl border border-slate-100 shadow-inner">
+                <p className="text-[10px] uppercase font-black text-blue-600 tracking-[0.2em] mb-3">อุปกรณ์ที่เลือก</p>
+                <div className="flex justify-between items-end">
                   <div>
-                    <p className="font-bold text-slate-800 text-lg leading-tight">{selectedBall.brand} {selectedBall.model}</p>
-                    <p className="text-xs text-slate-500 mt-1">รหัส: <span className="font-mono font-bold text-slate-700">{selectedBall.code}</span></p>
+                    <p className="font-black text-slate-800 text-xl leading-tight">{selectedBall.brand} {selectedBall.model}</p>
+                    <p className="text-xs text-slate-500 font-bold mt-1 uppercase tracking-wider">CODE: <span className="text-slate-800">{selectedBall.code}</span></p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-slate-500 font-medium">{selectedBall.weight}g / {selectedBall.diameter}mm</p>
-                    <p className="text-[10px] text-slate-400">{selectedBall.pattern}</p>
+                    <p className="text-sm text-slate-800 font-black">{selectedBall.weight}g / {selectedBall.diameter}mm</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">{selectedBall.pattern}</p>
                   </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">เวลาที่ยืม *</label>
-                  <input 
-                    type="time" 
-                    className="form-input w-full" 
-                    {...register('borrowTime', { required: 'กรุณาระบุเวลาที่ยืม' })} 
-                  />
-                  {errors.borrowTime && <p className="text-red-500 text-xs mt-1">{errors.borrowTime.message}</p>}
+                <div className="space-y-2">
+                  <label className="block text-xs font-black text-slate-500 uppercase tracking-widest pl-1">เวลาที่ยืม</label>
+                  <select 
+                    className="form-input w-full bg-slate-50 border-none font-bold py-3 rounded-2xl shadow-inner appearance-none" 
+                    {...register('borrowTime', { required: 'กรุณาระบุเวลาที่ยืม' })}
+                  >
+                    {TIME_OPTIONS.map(time => (
+                      <option key={time} value={time}>{time} น.</option>
+                    ))}
+                  </select>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">เวลาที่จะคืน *</label>
-                  <input 
-                    type="time" 
-                    className="form-input w-full" 
-                    {...register('returnTime', { required: 'กรุณาระบุเวลาคืน' })} 
-                  />
-                  {errors.returnTime && <p className="text-red-500 text-xs mt-1">{errors.returnTime.message}</p>}
+                <div className="space-y-2">
+                  <label className="block text-xs font-black text-slate-500 uppercase tracking-widest pl-1">เวลาคืน</label>
+                  <select 
+                    className="form-input w-full bg-slate-50 border-none font-bold py-3 rounded-2xl shadow-inner appearance-none" 
+                    {...register('returnTime', { required: 'กรุณาระบุเวลาคืน' })}
+                  >
+                    {TIME_OPTIONS.map(time => (
+                      <option key={time} value={time}>{time} น.</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">หมายเหตุ (ถ้ามี)</label>
+              <div className="space-y-2">
+                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest pl-1">หมายเหตุ</label>
                 <textarea 
-                  className="form-input w-full" 
-                  rows="2" 
-                  placeholder="เช่น ต้องการใช้ในงานแข่ง..."
+                  className="form-input w-full bg-slate-50 border-none font-bold py-4 rounded-2xl shadow-inner leading-relaxed" 
+                  rows="3" 
+                  placeholder="เช่น ใช้ในการฝึกซ้อมท่าตี..."
                   {...register('notes')} 
                 ></textarea>
               </div>
 
-              <div className="pt-2 flex gap-3">
+              <div className="pt-4 flex gap-4">
                 <button 
                   type="button" 
                   onClick={closeBorrowModal}
-                  className="flex-1 py-2 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium transition-colors"
+                  className="flex-1 py-4 text-slate-500 bg-slate-50 hover:bg-slate-100 rounded-2xl font-black text-xs uppercase tracking-widest transition-all"
                 >
                   ยกเลิก
                 </button>
                 <button 
                   type="submit" 
                   disabled={borrowMutation.isPending}
-                  className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors shadow-md shadow-blue-600/20"
+                  className="flex-2 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all shadow-xl shadow-blue-100 active:scale-95 flex items-center justify-center gap-2"
                 >
-                  {borrowMutation.isPending ? 'กำลังบันทึก...' : 'ยืนยันการยืม'}
+                  {borrowMutation.isPending ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      กำลังบันทึก...
+                    </>
+                  ) : 'ยืนยันการยืมอุปกรณ์'}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
-
     </div>
   );
 };

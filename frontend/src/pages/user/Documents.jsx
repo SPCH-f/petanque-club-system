@@ -13,20 +13,25 @@ const TableInput = ({ name, register, errors, columnDef }) => {
   const [rows, setRows] = useState([{ id: Date.now() }]);
 
   const columns = React.useMemo(() => {
-    // Safety check for columnDef
     const safeDef = (typeof columnDef === 'string') ? columnDef : '';
+    
+    const labelMap = {
+      name: 'รายการ',
+      amount: 'จำนวน',
+      code: 'รหัสวัสดุ,ครุภัณฑ์,อุปกรณ์(ถ้ามี)'
+    };
 
     if (!safeDef) return [
-      { key: 'name', label: 'รายการ', colSpan: 'col-span-5' },
-      { key: 'amount', label: 'จำนวน', colSpan: 'col-span-2' },
-      { key: 'code', label: 'รหัสพัสดุ', colSpan: 'col-span-3' }
+      { key: 'name', label: labelMap.name, colSpan: 'col-span-5' },
+      { key: 'amount', label: labelMap.amount, colSpan: 'col-span-2' },
+      { key: 'code', label: labelMap.code, colSpan: 'col-span-3' }
     ];
 
     try {
       return safeDef.split(',').map(c => {
         const parts = c.trim().split(':');
         const key = String(parts[0] || 'field');
-        const label = String(parts[1] || key);
+        const label = parts[1] || labelMap[key.toLowerCase()] || key;
         return { key, label, colSpan: 'flex-1' };
       });
     } catch (e) {
@@ -45,7 +50,7 @@ const TableInput = ({ name, register, errors, columnDef }) => {
   return (
     <div className="space-y-4 bg-slate-50 p-4 sm:p-6 rounded-[2rem] border border-slate-100 overflow-hidden">
       <div className={`hidden sm:flex items-center gap-4 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest`}>
-        <div className="w-8 text-center shrink-0">#</div>
+        <div className="w-8 text-center shrink-0">ลำดับ</div>
         {columns.map((col, i) => (
           <div key={i} className={col.colSpan}>{col.label}</div>
         ))}
@@ -220,6 +225,15 @@ const Documents = () => {
           <div className="p-6 sm:p-10 space-y-6 sm:space-y-8">
             <form className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
               {selectedTemplate.fields.map((field, index) => {
+                if (field.type === 'heading') {
+                  return (
+                    <div key={index} className="md:col-span-2 mt-4 sm:mt-6 pb-2 border-b-2 border-slate-100 mb-2">
+                       <h3 className="text-base sm:text-lg font-black text-indigo-600 uppercase tracking-[0.2em]">
+                         {field.label}
+                       </h3>
+                    </div>
+                  );
+                }
                 if (field.type === 'table') {
                   return <div key={index} className="md:col-span-2 space-y-3">
                     <label className="block text-xs sm:text-sm font-black text-slate-700 uppercase tracking-wider">{field.label}</label>

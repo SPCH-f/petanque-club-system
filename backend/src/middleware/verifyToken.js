@@ -14,7 +14,7 @@ const verifyToken = async (req, res, next) => {
 
     // Pull fresh user data (check if still active / not deleted)
     const [rows] = await db.query(
-      'SELECT id, username, email, first_name, last_name, avatar_url, role, user_type, status, phone, student_id, signature_url FROM users WHERE id = ? AND deleted_at IS NULL',
+      'SELECT id, username, email, first_name, last_name, avatar_url, role, user_type, status, phone, student_id, signature_url, signature_role FROM users WHERE id = ? AND deleted_at IS NULL',
       [decoded.userId]
     );
 

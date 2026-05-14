@@ -33,6 +33,7 @@ const safeUser = (user) => ({
   student_id: user.student_id,
   phone:      user.phone,
   signature_url: user.signature_url,
+  signature_role: user.signature_role,
   created_at: user.created_at,
 });
 
@@ -168,7 +169,7 @@ const getMe = async (req, res) => {
 
 const updateProfile = async (req, res) => {
   try {
-    const { first_name, last_name, avatar_url, signature_url, phone, student_id } = req.body;
+    const { first_name, last_name, avatar_url, signature_url, signature_role, phone, student_id } = req.body;
     const updates = [];
     const params = [];
 
@@ -191,6 +192,7 @@ const updateProfile = async (req, res) => {
     addField('signature_url', normalizeUrl(signature_url));
     addField('phone', phone);
     addField('student_id', student_id);
+    addField('signature_role', signature_role);
 
     if (updates.length === 0) {
       return sendSuccess(res, safeUser(req.user), 'ไม่มีข้อมูลที่เปลี่ยนแปลง');

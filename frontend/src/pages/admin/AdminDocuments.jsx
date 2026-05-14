@@ -5,8 +5,9 @@ import api from '../../services/api';
 import toast from 'react-hot-toast';
 import { 
   FileText, Plus, Trash2, Download, Eye, 
-  Settings, Save, X, FileUp, Info
+  Settings, Save, X, FileUp, Info, GripVertical
 } from 'lucide-react';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
 const AdminDocuments = () => {
   const queryClient = useQueryClient();
@@ -19,13 +20,13 @@ const AdminDocuments = () => {
       name: '',
       description: '',
       template: null,
-      fields: [{ name: '', label: '', type: 'text', required: true }]
+      fields: [{ name: '', label: '', type: 'text', required: true, columns: '' }]
     }
   });
 
   const watchedTemplate = watch('template');
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, move } = useFieldArray({
     control,
     name: "fields"
   });
@@ -76,12 +77,33 @@ const AdminDocuments = () => {
   });
 
   const onSubmit = (data) => {
-    saveMutation.mutate(data);
+    // Auto-fill empty names for headings or other fields
+    const processedData = {
+      ...data,
+      fields: data.fields.map((f, i) => ({
+        ...f,
+        name: f.name || `field_${i}_${Date.now()}`
+      }))
+    };
+    saveMutation.mutate(processedData);
+  };
+
+  const onDragEnd = (result) => {
+    if (!result.destination) return;
+    move(result.source.index, result.destination.index);
   };
 
   const onInvalid = (errs) => {
     console.error('Form Validation Errors:', errs);
-    toast.error('กรุณากรอกข้อมูลและอัปโหลดไฟล์ให้ครบถ้วน');
+    let errors = [];
+    if (errs.name) errors.push('ชื่อเทมเพลต');
+    if (errs.template) errors.push('ไฟล์เทมเพลต');
+    if (errs.fields) {
+      const fieldErrors = errs.fields.map((f, i) => f ? `ฟิลด์ที่ ${i + 1}` : null).filter(Boolean);
+      if (fieldErrors.length > 0) errors.push(`ข้อมูลฟิลด์ (${fieldErrors.join(', ')})`);
+    }
+    
+    toast.error(`กรุณากรอกข้อมูลให้ครบถ้วน: ${errors.join(' / ') || 'ตรวจสอบช่องสีแดง'}`);
   };
 
   const closeModal = () => {
@@ -91,7 +113,7 @@ const AdminDocuments = () => {
       name: '',
       description: '',
       template: null,
-      fields: [{ name: '', label: '', type: 'text', required: true }]
+      fields: [{ name: '', label: '', type: 'text', required: true, columns: '' }]
     });
   };
 
@@ -101,7 +123,10 @@ const AdminDocuments = () => {
       name: template.name,
       description: template.description || '',
       template: null,
-      fields: template.fields || []
+      fields: (template.fields || []).map(f => ({
+        ...f,
+        columns: f.columns || ''
+      }))
     });
     setIsModalOpen(true);
   };
@@ -273,69 +298,98 @@ const AdminDocuments = () => {
                     <label className="block text-sm font-black text-slate-700">กำหนดฟิลด์ข้อมูล</label>
                     <button 
                       type="button"
-                      onClick={() => append({ name: '', label: '', type: 'text', required: true })}
+                      onClick={() => append({ name: '', label: '', type: 'text', required: true, columns: '' })}
                       className="text-indigo-600 hover:text-indigo-700 text-xs font-black flex items-center gap-1"
                     >
                       <Plus size={14} /> เพิ่มฟิลด์
                     </button>
                   </div>
 
-                  <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                    {fields.map((field, index) => (
-                      <div key={field.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3 relative group">
-                        <button 
-                          type="button" 
-                          onClick={() => remove(index)}
-                          className="absolute top-2 right-2 text-slate-300 hover:text-red-500 transition-colors"
-                        >
-                          <X size={16} />
-                        </button>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <input 
-                              {...register(`fields.${index}.name`, { required: true })}
-                              placeholder="ชื่อฟิลด์ (ใน {{ }})"
-                              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none"
-                            />
-                          </div>
-                          <div>
-                            <input 
-                              {...register(`fields.${index}.label`, { required: true })}
-                              placeholder="หัวข้อที่จะให้ผู้ใช้เห็น"
-                              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none"
-                            />
-                          </div>
-                        </div>
-                        <div className="flex gap-4">
-                          <select 
-                            {...register(`fields.${index}.type`)}
-                            className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none"
-                          >
-                            <option value="text">Text (ข้อความบรรทัดเดียว)</option>
-                            <option value="textarea">Textarea (ข้อความยาว)</option>
-                            <option value="date">Date (วันที่)</option>
-                            <option value="number">Number (ตัวเลข)</option>
-                            <option value="checkbox">Checkbox (เครื่องหมายถูก)</option>
-                            <option value="table">Table (ตารางพัสดุ)</option>
-                          </select>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" {...register(`fields.${index}.required`)} className="rounded text-indigo-600" />
-                            <span className="text-xs font-bold text-slate-500">จำเป็น</span>
-                          </label>
-                        </div>
-                        {String(watch(`fields.${index}.type`)) === 'table' && (
-                          <div className="animate-in slide-in-from-top-2 duration-200">
-                            <label className="block text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-1.5 ml-1">หัวข้อคอลัมน์ (คั่นด้วยคอมม่า ,)</label>
-                            <input 
-                              {...register(`fields.${index}.columns`)}
-                              placeholder="เช่น name,amount,code"
-                              className="w-full px-3 py-2 bg-indigo-50 border border-indigo-100 rounded-xl text-xs font-bold outline-none placeholder:font-normal"
-                            />
-                            <p className="text-[9px] text-indigo-400 mt-1 ml-1">* ชื่อคอลัมน์ต้องตรงกับใน Word (เช่น {"{{name}}"} ต้องใส่ name)</p>
+                  <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                    <DragDropContext onDragEnd={onDragEnd}>
+                      <Droppable droppableId="fields">
+                        {(provided) => (
+                          <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-4">
+                            {fields.map((field, index) => (
+                              <Draggable key={field.id} draggableId={field.id} index={index}>
+                                {(provided, snapshot) => (
+                                  <div 
+                                    ref={provided.innerRef}
+                                    {...provided.draggableProps}
+                                    className={`p-4 bg-slate-50 rounded-2xl border ${snapshot.isDragging ? 'border-indigo-400 shadow-xl bg-white ring-2 ring-indigo-50' : 'border-slate-200'} space-y-3 relative group transition-all`}
+                                  >
+                                    <div className="flex items-center justify-between gap-2 mb-1">
+                                      <div {...provided.dragHandleProps} className="text-slate-300 hover:text-indigo-400 cursor-grab active:cursor-grabbing p-1">
+                                        <GripVertical size={20} />
+                                      </div>
+                                      <button 
+                                        type="button" 
+                                        onClick={() => remove(index)}
+                                        className="text-slate-300 hover:text-red-500 transition-colors p-1"
+                                      >
+                                        <X size={18} />
+                                      </button>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div className={watch(`fields.${index}.type`) === 'heading' ? 'hidden' : ''}>
+                                        <input 
+                                          {...register(`fields.${index}.name`, { 
+                                            validate: (val, formValues) => {
+                                              if (formValues.fields[index].type === 'heading') return true;
+                                              return !!val || 'กรุณาระบุชื่อฟิลด์';
+                                            }
+                                          })}
+                                          placeholder="ชื่อฟิลด์ (ใน {{ }})"
+                                          className={`w-full px-3 py-2 bg-white border ${errors.fields?.[index]?.name ? 'border-red-500 ring-1 ring-red-100' : 'border-slate-200'} rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-100 transition-all`}
+                                        />
+                                      </div>
+                                      <div className={watch(`fields.${index}.type`) === 'heading' ? 'col-span-2' : ''}>
+                                        <input 
+                                          {...register(`fields.${index}.label`, { required: 'กรุณาระบุหัวข้อ' })}
+                                          placeholder={watch(`fields.${index}.type`) === 'heading' ? "พิมพ์ข้อความหัวข้อที่ต้องการแสดงบนหน้าเว็บ" : "หัวข้อที่จะให้ผู้ใช้เห็น"}
+                                          className={`w-full px-3 py-2 bg-white border ${errors.fields?.[index]?.label ? 'border-red-500 ring-1 ring-red-100' : 'border-slate-200'} rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-100 transition-all`}
+                                        />
+                                      </div>
+                                    </div>
+                                    <div className="flex gap-4">
+                                      <select 
+                                        {...register(`fields.${index}.type`)}
+                                        className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-100 transition-all"
+                                      >
+                                        <option value="text">Text (ข้อความบรรทัดเดียว)</option>
+                                        <option value="textarea">Textarea (ข้อความยาว)</option>
+                                        <option value="date">Date (วันที่)</option>
+                                        <option value="number">Number (ตัวเลข)</option>
+                                        <option value="checkbox">Checkbox (เครื่องหมายถูก)</option>
+                                        <option value="table">Table (ตารางพัสดุ)</option>
+                                        <option value="heading">Heading (หัวข้อส่วน)</option>
+                                      </select>
+                                      <label className="flex items-center gap-2 cursor-pointer">
+                                        <input type="checkbox" {...register(`fields.${index}.required`)} className="rounded text-indigo-600" />
+                                        <span className="text-xs font-bold text-slate-500">จำเป็น</span>
+                                      </label>
+                                    </div>
+                                    {String(watch(`fields.${index}.type`)) === 'table' && (
+                                      <div className="animate-in slide-in-from-top-2 duration-200 p-3 bg-indigo-50/50 rounded-xl border border-indigo-100/50">
+                                        <label className="block text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-1.5 ml-1">หัวข้อคอลัมน์ (คั่นด้วยคอมม่า ,)</label>
+                                        <input 
+                                          {...register(`fields.${index}.columns`)}
+                                          placeholder="เช่น name,amount,code"
+                                          className="w-full px-3 py-2 bg-white border border-indigo-100 rounded-xl text-xs font-bold outline-none placeholder:font-normal"
+                                        />
+                                        <p className="text-[9px] text-indigo-400 mt-1 ml-1 font-medium">* ชื่อคอลัมน์ต้องตรงกับใน Word (เช่น {"{{name}}"} ต้องใส่ name)</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </Draggable>
+                            ))}
+                            {provided.placeholder}
                           </div>
                         )}
-                      </div>
-                    ))}
+                      </Droppable>
+                    </DragDropContext>
                   </div>
                   <div className="p-4 bg-blue-50 text-blue-600 rounded-2xl text-[10px] flex gap-3 leading-relaxed">
                     <Info size={16} className="shrink-0" />

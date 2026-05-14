@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs').promises;
 const fsSync = require('fs');
 const documentService = require('../services/documentService');
+const notificationService = require('../services/notificationService');
 const { sendSuccess, sendError } = require('../utils/apiResponse');
 
 const getTemplates = async (req, res) => {
@@ -125,18 +126,78 @@ const generateDocument = async (req, res) => {
     ];
 
     const mergedData = {
-      ...data,
+      ...(data && typeof data === 'object' ? data : {}),
       d: now.getDate(),
       m: thaiMonths[now.getMonth()],
       y: now.getFullYear() + 543 // Thai Buddhist Year
     };
 
+    // Auto-add index 'i' to any array fields for table numbering
+    Object.keys(mergedData).forEach(key => {
+      if (Array.isArray(mergedData[key])) {
+        mergedData[key] = mergedData[key].map((item, index) => {
+          if (typeof item === 'object' && item !== null) {
+            return { ...item, i: index + 1 };
+          }
+          return item;
+        });
+      }
+    });
+
+    // Handle Checkboxes: Fill missing checkbox fields with '☐'
+    if (template.fields) {
+      let fieldsArray = [];
+      try {
+        fieldsArray = typeof template.fields === 'string' ? JSON.parse(template.fields) : template.fields;
+      } catch (e) {
+        console.error('Failed to parse template fields:', e);
+      }
+
+      if (Array.isArray(fieldsArray)) {
+        fieldsArray.forEach(field => {
+          // Auto-format dates for the specific tags: sd, sm, sy, ed, em, ey
+          if (field.type === 'date' && mergedData[field.name]) {
+            const d = new Date(mergedData[field.name]);
+            if (!isNaN(d.getTime())) {
+              const day = d.getDate();
+              const month = thaiMonths[d.getMonth()];
+              const year = d.getFullYear() + 543;
+              
+              if (field.name.toLowerCase().startsWith('s')) {
+                mergedData.sd = day;
+                mergedData.sm = month;
+                mergedData.sy = year;
+              } else if (field.name.toLowerCase().startsWith('e')) {
+                mergedData.ed = day;
+                mergedData.em = month;
+                mergedData.ey = year;
+              }
+            }
+          }
+
+          if (field.type === 'checkbox') {
+            // If the field is missing or falsy, set it to the empty square symbol
+            if (!mergedData[field.name]) {
+              mergedData[field.name] = '☐';
+            } else if (mergedData[field.name] === true || mergedData[field.name] === 'true' || mergedData[field.name] === '1') {
+              // Ensure selected checkboxes show the checkmark
+              mergedData[field.name] = '✓';
+            }
+          }
+        });
+      }
+    }
+
     // Add user signature
     const [userRows] = await db.query('SELECT first_name, last_name, signature_url FROM users WHERE id = ?', [userId]);
     if (userRows[0]?.signature_url) {
       const sigPath = path.join(__dirname, '../../', userRows[0].signature_url);
-      if (fsSync.existsSync(sigPath)) {
-        mergedData.user = sigPath;
+      try {
+        if (fsSync.existsSync(sigPath)) {
+          mergedData.user = sigPath;
+        }
+      } catch (e) {
+        console.warn('Signature file check failed:', e.message);
       }
     }
     mergedData.n_user = userRows[0] ? `${userRows[0].first_name} ${userRows[0].last_name}` : '';
@@ -144,7 +205,15 @@ const generateDocument = async (req, res) => {
     // If it's a request being viewed/downloaded, add admin signatures and names
     if (requestId) {
       const [reqRows] = await db.query('SELECT admin_approvals FROM generated_documents WHERE id = ?', [requestId]);
-      const approvals = reqRows[0]?.admin_approvals || {};
+      let approvals = reqRows[0]?.admin_approvals || {};
+      if (typeof approvals === 'string') {
+        try {
+          approvals = JSON.parse(approvals);
+        } catch (e) {
+          console.error('Failed to parse admin_approvals:', e);
+          approvals = {};
+        }
+      }
 
       const roles = {
         approver: 'ad1',
@@ -157,8 +226,12 @@ const generateDocument = async (req, res) => {
         if (approvals[role]) {
           if (approvals[role].signature) {
             const sigPath = path.join(__dirname, '../../', approvals[role].signature);
-            if (fsSync.existsSync(sigPath)) {
-              mergedData[suffix] = sigPath;
+            try {
+              if (fsSync.existsSync(sigPath)) {
+                mergedData[suffix] = sigPath;
+              }
+            } catch (e) {
+              console.warn('Admin signature file check failed:', e.message);
             }
           }
 
@@ -231,18 +304,56 @@ const previewDocument = async (req, res) => {
     ];
 
     const mergedData = {
-      ...data,
+      ...(data && typeof data === 'object' ? data : {}),
       d: now.getDate(),
       m: thaiMonths[now.getMonth()],
       y: now.getFullYear() + 543
     };
 
+    // Auto-add index 'i' to any array fields for table numbering
+    Object.keys(mergedData).forEach(key => {
+      if (Array.isArray(mergedData[key])) {
+        mergedData[key] = mergedData[key].map((item, index) => {
+          if (typeof item === 'object' && item !== null) {
+            return { ...item, i: index + 1 };
+          }
+          return item;
+        });
+      }
+    });
+
+    // Handle Checkboxes: Fill missing checkbox fields with '☐'
+    if (template.fields) {
+      let fieldsArray = [];
+      try {
+        fieldsArray = typeof template.fields === 'string' ? JSON.parse(template.fields) : template.fields;
+      } catch (e) {
+        console.error('Failed to parse template fields:', e);
+      }
+
+      if (Array.isArray(fieldsArray)) {
+        fieldsArray.forEach(field => {
+          if (field.type === 'checkbox') {
+            if (!mergedData[field.name]) {
+              mergedData[field.name] = '☐';
+            } else if (mergedData[field.name] === true || mergedData[field.name] === 'true' || mergedData[field.name] === '1') {
+              mergedData[field.name] = '✓';
+            }
+          }
+        });
+      }
+    }
+
     // Add user signature
     const [userRows] = await db.query('SELECT first_name, last_name, signature_url FROM users WHERE id = ?', [userId]);
     if (userRows[0]?.signature_url) {
       const sigPath = path.join(__dirname, '../../', userRows[0].signature_url);
-      if (fsSync.existsSync(sigPath)) {
-        mergedData.user = sigPath;
+      try {
+        if (fsSync.existsSync(sigPath)) {
+          mergedData.user = sigPath;
+        }
+      } catch (e) {
+        console.warn('Preview signature file check failed:', e.message);
       }
     }
     mergedData.n_user = userRows[0] ? `${userRows[0].first_name} ${userRows[0].last_name}` : '';
@@ -334,6 +445,19 @@ const approveRequest = async (req, res) => {
       [JSON.stringify(approvals), newStatus, id]
     );
 
+    // Notify User
+    try {
+      const [[tplInfo]] = await db.query(
+        'SELECT t.name, gd.user_id FROM generated_documents gd JOIN document_templates t ON gd.template_id = t.id WHERE gd.id = ?',
+        [id]
+      );
+      if (tplInfo) {
+        await notificationService.notifyDocumentApproved(tplInfo.user_id, tplInfo.name, isFullyApproved);
+      }
+    } catch (notifyErr) {
+      console.error('Notify User of Document Approval Error:', notifyErr.message);
+    }
+
     return sendSuccess(res, { isFullyApproved }, 'ลงลายเซ็นเรียบร้อยแล้ว');
   } catch (err) {
     console.error(err);
@@ -345,6 +469,20 @@ const rejectRequest = async (req, res) => {
   try {
     const { id } = req.params;
     await db.query('UPDATE generated_documents SET status = ? WHERE id = ?', ['rejected', id]);
+
+    // Notify User
+    try {
+      const [[tplInfo]] = await db.query(
+        'SELECT t.name, gd.user_id FROM generated_documents gd JOIN document_templates t ON gd.template_id = t.id WHERE gd.id = ?',
+        [id]
+      );
+      if (tplInfo) {
+        await notificationService.notifyDocumentRejected(tplInfo.user_id, tplInfo.name);
+      }
+    } catch (notifyErr) {
+      console.error('Notify User of Document Rejection Error:', notifyErr.message);
+    }
+
     return sendSuccess(res, null, 'ปฏิเสธคำร้องเรียบร้อยแล้ว');
   } catch (err) {
     console.error(err);
@@ -357,11 +495,23 @@ const requestApproval = async (req, res) => {
     const { templateId, data } = req.body;
     const userId = req.user.id;
     if (!templateId || !data) return sendError(res, 422, 'ข้อมูลไม่ครบถ้วน');
+
     const id = uuidv4();
     await db.query(
       'INSERT INTO generated_documents (id, template_id, user_id, data, status) VALUES (?, ?, ?, ?, ?)',
       [id, templateId, userId, JSON.stringify(data), 'pending']
     );
+
+    // Notify Admins
+    try {
+      const [tplRows] = await db.query('SELECT name FROM document_templates WHERE id = ?', [templateId]);
+      const templateName = tplRows[0]?.name || 'เอกสารทั่วไป';
+      const userName = `${req.user.first_name} ${req.user.last_name}`;
+      await notificationService.notifyAdminsOfDocumentRequest(userName, templateName);
+    } catch (notifyErr) {
+      console.error('Notify Admins of Document Request Error:', notifyErr.message);
+    }
+
     return sendSuccess(res, { id }, 'ส่งคำร้องขออนุมัติเรียบร้อยแล้ว', 201);
   } catch (err) {
     console.error(err);

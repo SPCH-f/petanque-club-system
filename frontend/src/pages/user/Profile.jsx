@@ -27,7 +27,8 @@ const Profile = () => {
       phone: user?.phone || '',
       student_id: user?.student_id || '',
       avatar_url: user?.avatar_url || '',
-      signature_url: user?.signature_url || ''
+      signature_url: user?.signature_url || '',
+      signature_role: user?.signature_role || 'none'
     }
   });
 
@@ -44,7 +45,8 @@ const Profile = () => {
         phone: updatedUser.phone || '',
         student_id: updatedUser.student_id || '',
         avatar_url: updatedUser.avatar_url || '',
-        signature_url: updatedUser.signature_url || ''
+        signature_url: updatedUser.signature_url || '',
+        signature_role: updatedUser.signature_role || 'none'
       });
       toast.success('อัปเดตโปรไฟล์เรียบร้อย');
       setIsEditing(false);
@@ -60,7 +62,8 @@ const Profile = () => {
         phone: user.phone || '',
         student_id: user.student_id || '',
         avatar_url: user.avatar_url || '',
-        signature_url: user.signature_url || ''
+        signature_url: user.signature_url || '',
+        signature_role: user.signature_role || 'none'
       });
     }
   }, [user, reset]);
@@ -254,6 +257,33 @@ const Profile = () => {
               <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-6">
                 <input type="hidden" {...register('avatar_url')} />
                 <input type="hidden" {...register('signature_url')} />
+                
+                {user.role === 'admin' && (
+                  <div className="bg-blue-50/50 p-6 rounded-2xl border border-blue-100 mb-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <Shield size={18} className="text-blue-600" />
+                      <h4 className="text-sm font-black text-blue-900 uppercase tracking-widest">การตั้งค่าผู้อนุมัติ (Admin Only)</h4>
+                    </div>
+                    <div>
+                      <label className="form-label text-blue-700">ตำแหน่งการลงนามในเอกสาร</label>
+                      <select 
+                        className="form-input bg-white border-blue-200"
+                        disabled={!isEditing}
+                        {...register('signature_role')}
+                      >
+                        <option value="none">-- ไม่ระบุ (ไม่สามารถลงชื่อได้) --</option>
+                        <option value="approver">ผู้ตรวจรับอุปกรณ์ (Admin 1)</option>
+                        <option value="advisor1">อาจารย์ที่ปรึกษา 1 (Admin 2)</option>
+                        <option value="advisor2">อาจารย์ที่ปรึกษา 2 (Admin 3)</option>
+                        <option value="president">ประธานชมรม (Admin 4)</option>
+                      </select>
+                      <p className="text-[10px] text-blue-500 mt-2 font-bold italic">
+                        * กรุณาเลือกตำแหน่งให้ตรงตามหน้าที่ เพื่อให้ลายเซ็นปรากฏในช่องที่ถูกต้องในเอกสาร
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div>
                     <label className="form-label">ชื่อจริง</label>
