@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
 });
 
 // Request Interceptor: ติด Token ไปกับทุก Request
@@ -27,7 +27,8 @@ api.interceptors.response.use(
         if (!refreshToken) throw new Error('No refresh token');
 
         // ลอง refresh token
-        const res = await axios.post('/api/auth/refresh', { refreshToken });
+        const backendUrl = import.meta.env.VITE_API_URL || '';
+        const res = await axios.post(`${backendUrl}/api/auth/refresh`, { refreshToken });
         if (res.data.success) {
           const newToken = res.data.data.accessToken;
           const newRefresh = res.data.data.refreshToken;

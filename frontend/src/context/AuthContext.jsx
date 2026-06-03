@@ -29,6 +29,23 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     fetchUser();
+
+    const handleStorageChange = async (e) => {
+      if (e.key === 'token') {
+        if (e.newValue) {
+          // Token changed (login/switch account in another tab)
+          await fetchUser();
+        } else {
+          // Token removed (logout in another tab)
+          setUser(null);
+        }
+      } else if (e.key === 'adminAsUser') {
+        setAdminAsUser(e.newValue === 'true');
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   const login = (data) => {

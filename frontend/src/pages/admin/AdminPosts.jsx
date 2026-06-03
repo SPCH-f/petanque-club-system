@@ -10,6 +10,7 @@ import {
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import PostDetailModal from '../../components/PostDetailModal';
+import { getImageUrl } from '../../utils/image';
 
 const AdminPosts = () => {
   const queryClient = useQueryClient();
@@ -214,7 +215,7 @@ const AdminPosts = () => {
                           </div>
                         ) : post.image_url ? (
                           <div className="w-10 h-10 rounded-lg overflow-hidden border border-slate-200 shadow-sm shrink-0">
-                            <img src={post.image_url} alt="" className="w-full h-full object-cover" />
+                            <img src={getImageUrl(post.image_url)} referrerPolicy="no-referrer" alt="" className="w-full h-full object-cover" />
                           </div>
                         ) : (
                           <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-300 border border-slate-200 border-dashed shrink-0">
@@ -374,7 +375,7 @@ const AdminPosts = () => {
                 {/* Image Preview */}
                 {watchImageUrl && (
                   <div className="relative mt-2 rounded-2xl overflow-hidden border border-slate-100 shadow-inner group">
-                    <img src={watchImageUrl} alt="Preview" className="w-full h-48 object-cover" />
+                    <img src={getImageUrl(watchImageUrl)} referrerPolicy="no-referrer" alt="Preview" className="w-full h-48 object-cover" />
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                        <button 
                          type="button"

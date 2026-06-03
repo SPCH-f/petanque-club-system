@@ -6,6 +6,7 @@ import { Swiper, SwiperSlide } from 'swiper/react';
 import { Pagination, Navigation, Autoplay } from 'swiper/modules';
 import { Info, Mail, Globe, Image as ImageIcon, Star, Clock, MapPin, ChevronRight, Pin, X, Phone } from 'lucide-react';
 import clubLogo from '../../assets/logo ชมรมเปตอง.png';
+import { getImageUrl } from '../../utils/image';
 
 import 'swiper/css';
 import 'swiper/css/pagination';
@@ -158,7 +159,7 @@ const Home = () => {
                   onClick={() => setIsGalleryOpen(true)}
                   className="aspect-square rounded-xl overflow-hidden bg-slate-100 border border-slate-100 group cursor-pointer"
                 >
-                  <img src={p.image_url} alt="gallery" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                  <img src={getImageUrl(p.image_url)} referrerPolicy="no-referrer" alt="gallery" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                 </div>
               ))}
               {posts.filter(p => p.image_url).length === 0 && (
@@ -257,7 +258,7 @@ const Home = () => {
                   onClick={() => scrollToPost(p.id)}
                   className="aspect-square rounded-3xl overflow-hidden border-2 border-white/10 hover:border-blue-500 transition-all group relative cursor-pointer"
                 >
-                  <img src={p.image_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="gallery-item" />
+                  <img src={getImageUrl(p.image_url)} referrerPolicy="no-referrer" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="gallery-item" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
                     <p className="text-[10px] text-white font-bold line-clamp-1">{p.title}</p>
                   </div>

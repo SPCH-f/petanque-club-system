@@ -3,9 +3,43 @@ const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 const fs = require('fs').promises;
 const fsSync = require('fs');
+const axios = require('axios');
 const documentService = require('../services/documentService');
 const notificationService = require('../services/notificationService');
 const { sendSuccess, sendError } = require('../utils/apiResponse');
+const { uploadRawToCloudinary } = require('../utils/cloudinary');
+
+const isCloudinaryEnabled = () => {
+  return !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET);
+};
+
+const tempDir = path.join(__dirname, '../../uploads/temp');
+
+const resolveSignaturePath = async (urlOrPath, tempFiles) => {
+  if (!urlOrPath) return null;
+  if (urlOrPath.startsWith('http://') || urlOrPath.startsWith('https://')) {
+    if (!fsSync.existsSync(tempDir)) {
+      fsSync.mkdirSync(tempDir, { recursive: true });
+    }
+    const uniqueName = 'temp-sig-' + Date.now() + '-' + Math.round(Math.random() * 1e9) + '.png';
+    const tempPath = path.join(tempDir, uniqueName);
+    try {
+      const response = await axios.get(urlOrPath, { responseType: 'arraybuffer' });
+      await fs.writeFile(tempPath, response.data);
+      if (tempFiles) tempFiles.push(tempPath);
+      return tempPath;
+    } catch (err) {
+      console.error('Failed to download signature from Cloudinary:', urlOrPath, err.message);
+      return null;
+    }
+  } else {
+    const fullLocalPath = path.join(__dirname, '../../', urlOrPath);
+    if (fsSync.existsSync(fullLocalPath)) {
+      return fullLocalPath;
+    }
+    return null;
+  }
+};
 
 const getTemplates = async (req, res) => {
   try {
@@ -60,7 +94,12 @@ const createTemplate = async (req, res) => {
     }
 
     const id = uuidv4();
-    const filePath = file.path; // Already handled by multer
+    let filePath;
+    if (isCloudinaryEnabled()) {
+      filePath = await uploadRawToCloudinary(file.buffer, 'templates', file.originalname);
+    } else {
+      filePath = file.path;
+    }
 
     await db.query(
       'INSERT INTO document_templates (id, name, description, file_path, fields) VALUES (?, ?, ?, ?, ?)',
@@ -83,7 +122,14 @@ const updateTemplate = async (req, res) => {
     const [existing] = await db.query('SELECT file_path FROM document_templates WHERE id = ?', [id]);
     if (existing.length === 0) return sendError(res, 404, 'ไม่พบเทมเพลต');
 
-    const filePath = file ? file.path : existing[0].file_path;
+    let filePath = existing[0].file_path;
+    if (file) {
+      if (isCloudinaryEnabled()) {
+        filePath = await uploadRawToCloudinary(file.buffer, 'templates', file.originalname);
+      } else {
+        filePath = file.path;
+      }
+    }
 
     await db.query(
       'UPDATE document_templates SET name = ?, description = ?, file_path = ?, fields = ? WHERE id = ?',
@@ -98,6 +144,7 @@ const updateTemplate = async (req, res) => {
 };
 
 const generateDocument = async (req, res) => {
+  const tempFiles = [];
   try {
     const { templateId, data } = req.body;
     const { requestId } = req.query;
@@ -208,12 +255,10 @@ const generateDocument = async (req, res) => {
     // Add user signature (Borrow Phase)
     const [userRows] = await db.query('SELECT first_name, last_name, signature_url FROM users WHERE id = ?', [userId]);
     if (userRows[0]?.signature_url) {
-      const sigPath = path.join(__dirname, '../../', userRows[0].signature_url);
-      try {
-        if (fsSync.existsSync(sigPath)) {
-          mergedData.buser = sigPath;
-        }
-      } catch (e) {}
+      const sigPath = await resolveSignaturePath(userRows[0].signature_url, tempFiles);
+      if (sigPath) {
+        mergedData.buser = sigPath;
+      }
     }
     const profileName = userRows[0] ? `${userRows[0].first_name} ${userRows[0].last_name}` : '';
     if (!mergedData['n-user']) mergedData['n-user'] = profileName;
@@ -240,12 +285,10 @@ const generateDocument = async (req, res) => {
       // Fill Borrow Signatures (bad1, bad2, ...)
       for (const [role, suffix] of Object.entries(roles)) {
         if (borrowApprovals[role]?.signature) {
-          const sigPath = path.join(__dirname, '../../', borrowApprovals[role].signature);
-          try {
-            if (fsSync.existsSync(sigPath)) {
-              mergedData[`b${suffix}`] = sigPath;
-            }
-          } catch (e) {}
+          const sigPath = await resolveSignaturePath(borrowApprovals[role].signature, tempFiles);
+          if (sigPath) {
+            mergedData[`b${suffix}`] = sigPath;
+          }
         }
       }
 
@@ -264,23 +307,19 @@ const generateDocument = async (req, res) => {
         // Fill Return Signatures (rad1, rad2, ...)
         for (const [role, suffix] of Object.entries(roles)) {
           if (returnApprovals[role]?.signature) {
-            const sigPath = path.join(__dirname, '../../', returnApprovals[role].signature);
-            try {
-              if (fsSync.existsSync(sigPath)) {
-                mergedData[`r${suffix}`] = sigPath;
-              }
-            } catch (e) {}
+            const sigPath = await resolveSignaturePath(returnApprovals[role].signature, tempFiles);
+            if (sigPath) {
+              mergedData[`r${suffix}`] = sigPath;
+            }
           }
         }
 
         // Fill Return User Data (ruser, rn-user, rp-user)
         if (returnDetails.signature) {
-          const sigPath = path.join(__dirname, '../../', returnDetails.signature);
-          try {
-            if (fsSync.existsSync(sigPath)) {
-              mergedData.ruser = sigPath;
-            }
-          } catch (e) {}
+          const sigPath = await resolveSignaturePath(returnDetails.signature, tempFiles);
+          if (sigPath) {
+            mergedData.ruser = sigPath;
+          }
         }
         
         // Use rn-user as shown in image
@@ -333,10 +372,18 @@ const generateDocument = async (req, res) => {
   } catch (err) {
     console.error('GENERATE ERROR:', err);
     return sendError(res, 500, 'เกิดข้อผิดพลาดในการสร้างเอกสาร: ' + err.message);
+  } finally {
+    // Cleanup temporary downloaded signatures
+    for (const f of tempFiles) {
+      try {
+        await fs.unlink(f);
+      } catch (e) {}
+    }
   }
 };
 
 const previewDocument = async (req, res) => {
+  const tempFiles = [];
   try {
     const { templateId, data } = req.body;
     const userId = req.user.id;
@@ -401,13 +448,9 @@ const previewDocument = async (req, res) => {
     // Add user signature
     const [userRows] = await db.query('SELECT first_name, last_name, signature_url FROM users WHERE id = ?', [userId]);
     if (userRows[0]?.signature_url) {
-      const sigPath = path.join(__dirname, '../../', userRows[0].signature_url);
-      try {
-        if (fsSync.existsSync(sigPath)) {
-          mergedData.user = sigPath;
-        }
-      } catch (e) {
-        console.warn('Preview signature file check failed:', e.message);
+      const sigPath = await resolveSignaturePath(userRows[0].signature_url, tempFiles);
+      if (sigPath) {
+        mergedData.user = sigPath;
       }
     }
     mergedData.n_user = userRows[0] ? `${userRows[0].first_name} ${userRows[0].last_name}` : '';
@@ -424,6 +467,13 @@ const previewDocument = async (req, res) => {
   } catch (err) {
     console.error('PREVIEW ERROR:', err);
     return sendError(res, 500, 'เกิดข้อผิดพลาดในการสร้างตัวอย่าง: ' + err.message);
+  } finally {
+    // Cleanup temporary downloaded signatures
+    for (const f of tempFiles) {
+      try {
+        await fs.unlink(f);
+      } catch (e) {}
+    }
   }
 };
 

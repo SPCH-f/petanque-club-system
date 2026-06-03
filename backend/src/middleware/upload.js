@@ -2,31 +2,41 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    let type = 'avatars';
-    const url = req.originalUrl || req.url || '';
-    
-    if (file.fieldname === 'signature' || url.includes('signature')) type = 'signatures';
-    else if (file.fieldname === 'image' || url.includes('ball')) type = 'balls';
-    
-    const dir = path.join(__dirname, `../../uploads/${type}`);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+const isCloudinaryEnabled = () => {
+  return !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET);
+};
+
+let storage;
+
+if (isCloudinaryEnabled()) {
+  storage = multer.memoryStorage();
+} else {
+  storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      let type = 'avatars';
+      const url = req.originalUrl || req.url || '';
+      
+      if (file.fieldname === 'signature' || url.includes('signature')) type = 'signatures';
+      else if (file.fieldname === 'image' || url.includes('ball')) type = 'balls';
+      
+      const dir = path.join(__dirname, `../../uploads/${type}`);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      cb(null, dir);
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+      let prefix = 'avatar-';
+      const url = req.originalUrl || req.url || '';
+      
+      if (file.fieldname === 'signature' || url.includes('signature')) prefix = 'sig-';
+      else if (file.fieldname === 'image' || url.includes('ball')) prefix = 'ball-';
+      
+      cb(null, prefix + uniqueSuffix + path.extname(file.originalname));
     }
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    let prefix = 'avatar-';
-    const url = req.originalUrl || req.url || '';
-    
-    if (file.fieldname === 'signature' || url.includes('signature')) prefix = 'sig-';
-    else if (file.fieldname === 'image' || url.includes('ball')) prefix = 'ball-';
-    
-    cb(null, prefix + uniqueSuffix + path.extname(file.originalname));
-  }
-});
+  });
+}
 
 const fileFilter = (req, file, cb) => {
   cb(null, true);
@@ -39,3 +49,4 @@ const upload = multer({
 });
 
 module.exports = upload;
+

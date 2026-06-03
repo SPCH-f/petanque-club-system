@@ -21,7 +21,14 @@ class DocumentService {
   async generatePdfFromDocx(templatePath, data) {
     try {
       // 1. Read the template file
-      const content = await fs.readFile(templatePath, 'binary');
+      let content;
+      if (templatePath.startsWith('http://') || templatePath.startsWith('https://')) {
+        const axios = require('axios');
+        const response = await axios.get(templatePath, { responseType: 'arraybuffer' });
+        content = response.data;
+      } else {
+        content = await fs.readFile(templatePath);
+      }
       const zip = new PizZip(content);
 
       // 2. Configure Image Module (same as in generateDocx)
@@ -88,7 +95,14 @@ class DocumentService {
    */
   async generateDocx(templatePath, data) {
     try {
-      const content = await fs.readFile(templatePath, 'binary');
+      let content;
+      if (templatePath.startsWith('http://') || templatePath.startsWith('https://')) {
+        const axios = require('axios');
+        const response = await axios.get(templatePath, { responseType: 'arraybuffer' });
+        content = response.data;
+      } else {
+        content = await fs.readFile(templatePath);
+      }
       const zip = new PizZip(content);
 
       const fsSync = require('fs');

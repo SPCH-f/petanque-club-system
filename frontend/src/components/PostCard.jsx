@@ -6,6 +6,7 @@ import { Heart, MessageCircle, Pin, Bookmark, X } from 'lucide-react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import PostDetailModal from './PostDetailModal';
+import { getImageUrl } from '../utils/image';
 
 const PostCard = ({ post, onLike }) => {
   const [showComments, setShowComments] = useState(false);
@@ -72,7 +73,7 @@ const PostCard = ({ post, onLike }) => {
         <div className="flex justify-between items-start mb-4">
           <div className="flex gap-3">
             <img
-              src={post.author_avatar || `https://ui-avatars.com/api/?name=${post.author_name}&background=random`}
+              src={getImageUrl(post.author_avatar) || `https://ui-avatars.com/api/?name=${post.author_name}&background=random`}
               alt={post.author_name}
               className="w-10 h-10 rounded-full border border-slate-200 shadow-sm"
             />
@@ -125,7 +126,7 @@ const PostCard = ({ post, onLike }) => {
             className="mb-4 -mx-5 border-y border-slate-100 bg-slate-50 cursor-zoom-in group relative"
             onClick={() => setIsPreviewOpen(true)}
           >
-            <img src={post.image_url} alt="post" className="w-full h-auto max-h-96 object-contain transition-transform duration-500 group-hover:scale-[1.02]" />
+            <img src={getImageUrl(post.image_url)} referrerPolicy="no-referrer" alt="post" className="w-full h-auto max-h-96 object-contain transition-transform duration-500 group-hover:scale-[1.02]" />
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
                <span className="bg-white/20 backdrop-blur-md text-white px-4 py-2 rounded-full text-xs font-bold border border-white/30">คลิกเพื่อดูรูปเต็ม</span>
             </div>
@@ -181,7 +182,7 @@ const PostCard = ({ post, onLike }) => {
                     {/* Main Comment */}
                     <div className="flex gap-3">
                       <img
-                        src={comment.user_avatar || `https://ui-avatars.com/api/?name=${comment.user_name}&background=random`}
+                        src={getImageUrl(comment.user_avatar) || `https://ui-avatars.com/api/?name=${comment.user_name}&background=random`}
                         alt={comment.user_name}
                         className="w-8 h-8 rounded-full flex-shrink-0"
                       />
@@ -221,7 +222,7 @@ const PostCard = ({ post, onLike }) => {
                           <div key={reply.id} className="flex gap-2 relative group">
                             <div className="absolute -left-4 top-1/2 w-4 h-0.5 bg-slate-200"></div>
                             <img
-                              src={reply.user_avatar || `https://ui-avatars.com/api/?name=${reply.user_name}&background=random`}
+                              src={getImageUrl(reply.user_avatar) || `https://ui-avatars.com/api/?name=${reply.user_name}&background=random`}
                               alt={reply.user_name}
                               className="w-6 h-6 rounded-full flex-shrink-0"
                             />

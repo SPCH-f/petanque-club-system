@@ -6,6 +6,7 @@ import { th } from 'date-fns/locale';
 import { Heart, MessageCircle, X } from 'lucide-react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
+import { getImageUrl } from '../utils/image';
 
 const PostDetailModal = ({ post, isOpen, onClose, onLike, isAdmin = false }) => {
   const [commentText, setCommentText] = useState('');
@@ -70,7 +71,8 @@ const PostDetailModal = ({ post, isOpen, onClose, onLike, isAdmin = false }) => 
         {/* Left Pane: Image Showcase */}
         <div className="h-[40vh] md:h-full md:flex-[1.5] bg-slate-900 flex items-center justify-center relative group shrink-0">
           <img 
-            src={post.image_url} 
+            src={getImageUrl(post.image_url)} 
+            referrerPolicy="no-referrer"
             alt="showcase" 
             className="w-full h-full object-contain"
           />
@@ -88,7 +90,7 @@ const PostDetailModal = ({ post, isOpen, onClose, onLike, isAdmin = false }) => 
           <div className="p-4 md:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
             <div className="flex items-center gap-3">
               <img
-                src={post.author_avatar || `https://ui-avatars.com/api/?name=${post.author_name}&background=random`}
+                src={getImageUrl(post.author_avatar) || `https://ui-avatars.com/api/?name=${post.author_name}&background=random`}
                 alt={post.author_name}
                 className="w-9 h-9 md:w-10 md:h-10 rounded-full border border-slate-200"
               />
@@ -131,7 +133,7 @@ const PostDetailModal = ({ post, isOpen, onClose, onLike, isAdmin = false }) => 
                     <div key={comment.id} className="space-y-3">
                       <div className="flex gap-2 md:gap-3">
                         <img
-                          src={comment.user_avatar || `https://ui-avatars.com/api/?name=${comment.user_name}&background=random`}
+                          src={getImageUrl(comment.user_avatar) || `https://ui-avatars.com/api/?name=${comment.user_name}&background=random`}
                           alt={comment.user_name}
                           className="w-7 h-7 md:w-8 md:h-8 rounded-full flex-shrink-0"
                         />
@@ -178,7 +180,7 @@ const PostDetailModal = ({ post, isOpen, onClose, onLike, isAdmin = false }) => 
                             <div key={reply.id} className="flex gap-2 relative group">
                               <div className="absolute -left-3 md:-left-4 top-1/2 w-3 md:w-4 h-0.5 bg-slate-100"></div>
                               <img
-                                src={reply.user_avatar || `https://ui-avatars.com/api/?name=${reply.user_name}&background=random`}
+                                src={getImageUrl(reply.user_avatar) || `https://ui-avatars.com/api/?name=${reply.user_name}&background=random`}
                                 alt={reply.user_name}
                                 className="w-5 h-5 md:w-6 md:h-6 rounded-full flex-shrink-0"
                               />
