@@ -34,6 +34,16 @@ Thumbs.db
 # Backend Uploads
 backend/uploads/*
 !backend/uploads/.gitkeep
+!backend/uploads/avatars/
+!backend/uploads/avatars/**
+!backend/uploads/signatures/
+!backend/uploads/signatures/**
+!backend/uploads/templates/
+!backend/uploads/templates/**
+!backend/uploads/generated/
+!backend/uploads/generated/**
+!backend/uploads/balls/
+!backend/uploads/balls/**
 
 # Logs
 logs/
