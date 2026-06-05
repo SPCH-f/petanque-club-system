@@ -14,6 +14,10 @@ const pool = mysql.createPool({
   keepAliveInitialDelay: 0,
   timezone:           '+07:00',
   charset:            'utf8mb4',
+  // Aiven MySQL requires SSL
+  ...(process.env.NODE_ENV === 'production' && {
+    ssl: { rejectUnauthorized: true }
+  }),
 });
 
 // Test connection on startup
