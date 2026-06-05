@@ -9,12 +9,15 @@ const auditLog = require('../middleware/auditLog');
 const { sendResetPasswordEmail } = require('../services/emailService');
 
 // ── Helpers ──────────────────────────────────────────────────
+const getJwtSecret = () => process.env.JWT_SECRET || 'petanque-default-secret-change-me';
+const getRefreshJwtSecret = () => process.env.JWT_REFRESH_SECRET || 'petanque-default-refresh-secret-change-me';
+
 const generateTokens = (user) => {
   const payload = { userId: user.id, role: user.role };
-  const accessToken = jwt.sign(payload, process.env.JWT_SECRET, {
+  const accessToken = jwt.sign(payload, getJwtSecret(), {
     expiresIn: process.env.JWT_EXPIRES_IN || '1d',
   });
-  const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET, {
+  const refreshToken = jwt.sign(payload, getRefreshJwtSecret(), {
     expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
   });
   return { accessToken, refreshToken };
