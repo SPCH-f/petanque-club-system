@@ -9,7 +9,7 @@ import 'swiper/css/pagination';
 import 'swiper/css/navigation';
 import 'swiper/css/navigation';
 import clubLogo from '../../assets/logo ชมรมเปตอง.png';
-import petanquePattern from '../../assets/รูปลูกเปตอง.jpg';
+import petanquePattern from '../../assets/petanque_bg_pattern.png';
 import { getImageUrl } from '../../utils/image';
 
 // ── สไตล์ตามประเภทกรรมการ ──────────────────────────────────────────────
