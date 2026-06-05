@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import api from '../../services/api';
 import toast from 'react-hot-toast';
 import { Search, Plus, Edit2, Trash2, X, CircleDot, LayoutGrid, Camera, UploadCloud } from 'lucide-react';
+import { getImageUrl } from '../../utils/image';
 
 const AdminBalls = () => {
   const queryClient = useQueryClient();
@@ -285,7 +286,7 @@ const AdminBalls = () => {
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform overflow-hidden border border-slate-100">
                         {ball.image_url ? (
-                          <img src={ball.image_url} alt="Ball" className="w-full h-full object-cover" />
+                          <img src={getImageUrl(ball.image_url)} alt="Ball" className="w-full h-full object-cover" />
                         ) : (
                           <CircleDot size={20} />
                         )}
@@ -346,7 +347,7 @@ const AdminBalls = () => {
                 <div className="flex items-center gap-4">
                   <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center overflow-hidden border border-slate-200">
                     {ball.image_url ? (
-                      <img src={ball.image_url} alt="Ball" className="w-full h-full object-cover" />
+                      <img src={getImageUrl(ball.image_url)} alt="Ball" className="w-full h-full object-cover" />
                     ) : (
                       <CircleDot size={24} className="text-slate-400" />
                     )}
@@ -433,7 +434,7 @@ const AdminBalls = () => {
                     <div className="relative w-24 h-24 rounded-2xl bg-white shadow-md flex items-center justify-center overflow-hidden border border-slate-100 shrink-0">
                       {register('image_url').value || editingBall?.image_url ? (
                         <img 
-                          src={register('image_url').value || editingBall?.image_url} 
+                          src={getImageUrl(register('image_url').value || editingBall?.image_url)} 
                           alt="Preview" 
                           className="w-full h-full object-cover" 
                         />

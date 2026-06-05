@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { CircleDot, Clock, ShieldCheck, AlertCircle, X, Search, History } from 'lucide-react';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
+import { getImageUrl } from '../../utils/image';
 
 const TIME_OPTIONS = [
   '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00'
@@ -336,7 +337,7 @@ const Balls = () => {
           <div key={ball.id} className="bg-white rounded-[2rem] shadow-sm hover:shadow-2xl hover:shadow-blue-100/50 border border-slate-100 transition-all duration-500 flex flex-col group overflow-hidden relative">
             <div className="h-48 bg-slate-50 relative overflow-hidden">
               {ball.image_url ? (
-                <img src={ball.image_url} alt={ball.brand} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
+                <img src={getImageUrl(ball.image_url)} alt={ball.brand} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-slate-300">
                   <CircleDot size={64} className="opacity-10 group-hover:rotate-45 transition-transform duration-700" />
