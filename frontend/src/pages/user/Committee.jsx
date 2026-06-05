@@ -79,6 +79,7 @@ const MemberCard = ({ member, isCenter }) => {
             alt={member.name} 
             loading="lazy"
             decoding="async"
+            referrerPolicy="no-referrer"
             className="w-full h-full object-contain relative z-10 transition-all duration-700 group-hover:scale-110 opacity-0"
             onLoad={(e) => e.currentTarget.classList.remove('opacity-0')}
             style={{ filter: 'drop-shadow(0 20px 30px rgba(0,0,0,0.15))' }}
@@ -268,6 +269,7 @@ const Committee = () => {
                     src={getImageUrl(displayMembers[activeIndex].photo_url)} 
                     loading="lazy"
                     decoding="async"
+                    referrerPolicy="no-referrer"
                     className="w-full h-full object-cover opacity-0 transition-opacity duration-300" 
                     onLoad={(e) => e.currentTarget.classList.remove('opacity-0')}
                     alt="active-member"
@@ -310,6 +312,7 @@ const Committee = () => {
                       src={getImageUrl(member.photo_url)} 
                       loading="lazy"
                       decoding="async"
+                      referrerPolicy="no-referrer"
                       className="w-full h-full object-contain p-2 opacity-0 transition-opacity duration-500" 
                       onLoad={(e) => e.currentTarget.classList.remove('opacity-0')}
                       alt="member-thumb"

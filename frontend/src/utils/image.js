@@ -5,21 +5,36 @@
  */
 export const getImageUrl = (url) => {
   if (!url) return null;
-  
+
   // Replace HTML escaped ampersands &amp; with literal &
-  url = url.replace(/&amp;/g, '&');
-  
-  // If it is an external URL (Cloudinary, Facebook, etc.), return as is
-  if (url.startsWith('http://') || url.startsWith('https://')) {
+  url = String(url).replace(/&amp;/g, '&').trim();
+
+  // Preserve external URLs (Cloudinary, Facebook, etc.)
+  if (/^https?:\/\//i.test(url)) {
+    // Normalize local development URLs to the configured backend URL in production.
+    if (/localhost:\d+|127\.0\.0\.1:\d+/.test(url)) {
+      let backendUrl = import.meta.env.VITE_API_URL || '';
+      if (backendUrl.endsWith('/api')) {
+        backendUrl = backendUrl.slice(0, -4);
+      }
+      if (!backendUrl) {
+        backendUrl = typeof window !== 'undefined' ? window.location.origin : '';
+      }
+      const relative = url.replace(/^https?:\/\/[^/]+/i, '');
+      return `${backendUrl}${relative}`;
+    }
     return url;
   }
 
   // Get backend base URL (remove trailing /api if present)
   let backendUrl = import.meta.env.VITE_API_URL || '';
   if (backendUrl.endsWith('/api')) {
-    backendUrl = backendUrl.substring(0, backendUrl.length - 4);
+    backendUrl = backendUrl.slice(0, -4);
   }
-  
+  if (!backendUrl) {
+    backendUrl = typeof window !== 'undefined' ? window.location.origin : '';
+  }
+
   // If it's a relative path starting with /uploads
   if (url.startsWith('/uploads')) {
     return `${backendUrl}${url}`;
@@ -30,6 +45,6 @@ export const getImageUrl = (url) => {
     const parts = url.split('/uploads/');
     return `${backendUrl}/uploads/` + (parts[parts.length - 1] || '');
   }
-  
+
   return url;
 };
