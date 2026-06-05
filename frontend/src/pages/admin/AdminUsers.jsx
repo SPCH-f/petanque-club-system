@@ -5,6 +5,7 @@ import api from '../../services/api';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
+import { getImageUrl } from '../../utils/image';
 
 const AdminUsers = () => {
   const queryClient = useQueryClient();
@@ -102,7 +103,7 @@ const AdminUsers = () => {
                       <div className="flex items-center gap-4">
                         <div className="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center text-white font-black shadow-lg group-hover:scale-110 transition-transform overflow-hidden">
                           {user.avatar_url ? (
-                            <img src={user.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+                            <img src={getImageUrl(user.avatar_url)} alt="avatar" className="w-full h-full object-cover" loading="lazy" decoding="async" />
                           ) : (
                             user.first_name?.charAt(0)
                           )}
@@ -223,7 +224,7 @@ const AdminUsers = () => {
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white font-black shadow-lg overflow-hidden shrink-0">
                       {user.avatar_url ? (
-                        <img src={user.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+                        <img src={getImageUrl(user.avatar_url)} alt="avatar" className="w-full h-full object-cover" loading="lazy" decoding="async" />
                       ) : (
                         user.first_name?.charAt(0)
                       )}

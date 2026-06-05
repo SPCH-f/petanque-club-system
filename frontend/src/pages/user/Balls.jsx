@@ -337,7 +337,7 @@ const Balls = () => {
           <div key={ball.id} className="bg-white rounded-[2rem] shadow-sm hover:shadow-2xl hover:shadow-blue-100/50 border border-slate-100 transition-all duration-500 flex flex-col group overflow-hidden relative">
             <div className="h-48 bg-slate-50 relative overflow-hidden">
               {ball.image_url ? (
-                <img src={getImageUrl(ball.image_url)} alt={ball.brand} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
+                <img src={getImageUrl(ball.image_url)} alt={ball.brand} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" loading="lazy" decoding="async" />
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-slate-300">
                   <CircleDot size={64} className="opacity-10 group-hover:rotate-45 transition-transform duration-700" />

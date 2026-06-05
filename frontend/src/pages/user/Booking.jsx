@@ -109,6 +109,13 @@ const FieldMap = ({ fields, bookings, onSelectField, selectedFieldId, currentTim
 
           {/* Center Grid Area */}
           <div className="col-span-11 flex flex-col gap-4">
+            {/* Row 5: Field 60 */}
+            <div className="flex justify-start">
+              <div className="w-full max-w-[180px]">
+                <FieldGroup label="สนามที่ 60" numbers={[60]} columns={1} />
+              </div>
+            </div>
+
             {/* Row 4: 59-51 & 50-41 */}
             <div className="grid grid-cols-2 gap-10">
               <FieldGroup label="สนามที่ 59 ➔ 51" numbers={Array.from({ length: 9 }, (_, i) => 59 - i)} columns={9} />

@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../../services/api';
 import { MapPin, Users, Info, Calendar, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { getImageUrl } from '../../utils/image';
 
 const Fields = () => {
   const navigate = useNavigate();
@@ -69,7 +70,7 @@ const Fields = () => {
             {/* Image section placeholder */}
             <div className="h-48 bg-slate-100 relative overflow-hidden">
               {field.image_url ? (
-                <img src={field.image_url} alt={field.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                <img src={getImageUrl(field.image_url)} alt={field.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" decoding="async" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-slate-100 group-hover:scale-105 transition-transform duration-500">
                   <MapPin size={48} className="text-blue-200" />
