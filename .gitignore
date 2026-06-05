@@ -47,3 +47,6 @@ brain/
 scratch/
 .gemini/
 .antigravity/
+
+# Local database import helper (do not commit)
+database/import.js
